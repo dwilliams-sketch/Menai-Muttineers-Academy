@@ -42,13 +42,28 @@ jobs:
           if 'android.permission.INTERNET' not in text:
               text = text.replace('>\n    <application', '>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <application', 1)
           manifest.write_text(text)
+
           index = Path('web/index.html')
           text = index.read_text().replace('<title>academy</title>', '<title>Menai Muttineers Academy</title>')
           index.write_text(text)
+
           m = Path('web/manifest.json')
           text = m.read_text().replace('"name": "academy"', '"name": "Menai Muttineers Academy"').replace('"short_name": "academy"', '"short_name": "Muttineers Academy"')
           m.write_text(text)
           PY
+
+      - name: Apply Menai Muttineers app icons
+        run: |
+          cp branding/android/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          cp branding/android/mipmap-hdpi/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          cp branding/android/mipmap-xhdpi/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          cp branding/android/mipmap-xxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          cp branding/android/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          cp branding/web/favicon.png web/favicon.png
+          cp branding/web/icons/Icon-192.png web/icons/Icon-192.png
+          cp branding/web/icons/Icon-512.png web/icons/Icon-512.png
+          cp branding/web/icons/Icon-maskable-192.png web/icons/Icon-maskable-192.png
+          cp branding/web/icons/Icon-maskable-512.png web/icons/Icon-maskable-512.png
 
       - name: Get Flutter packages
         run: flutter pub get
