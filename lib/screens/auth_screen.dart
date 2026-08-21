@@ -27,6 +27,93 @@ class _AuthScreenState extends State<AuthScreen> {
   final notes = TextEditingController();
   final service = FirestoreService();
 
+  Future<void> resetPassword() async {
+    final resetEmail = TextEditingController(text: email.text.trim());
+
+    final submittedEmail = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Reset your password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter the email address you used for the Academy. We’ll send you a secure link to choose a new password.',
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: resetEmail,
+              autofocus: true,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(labelText: 'Email address'),
+              onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(resetEmail.text),
+            child: const Text('Send reset link'),
+          ),
+        ],
+      ),
+    );
+
+    resetEmail.dispose();
+    if (!mounted || submittedEmail == null) return;
+
+    final address = submittedEmail.trim();
+    if (address.isEmpty || !address.contains('@')) {
+      setState(() => error = 'Please enter a valid email address.');
+      return;
+    }
+
+    setState(() {
+      busy = true;
+      error = '';
+    });
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: address);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Password reset email sent. Check your inbox and junk/spam folder, then follow the link to choose a new password.',
+          ),
+          duration: Duration(seconds: 7),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'invalid-email') {
+        setState(() => error = 'Please enter a valid email address.');
+      } else if (e.code == 'too-many-requests') {
+        setState(() => error = 'There have been too many attempts. Please wait a little while and try again.');
+      } else if (e.code == 'network-request-failed') {
+        setState(() => error = 'We could not reach the internet. Please check your connection and try again.');
+      } else {
+        // Keep the response neutral so the app does not reveal whether an email is registered.
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'If an Academy account exists for that email, a password reset link will be sent. Please also check your junk/spam folder.',
+            ),
+            duration: Duration(seconds: 7),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> pickDob() async {
     final now = DateTime.now();
     final chosen = await showDatePicker(
@@ -83,6 +170,21 @@ class _AuthScreenState extends State<AuthScreen> {
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  @override
+  void dispose() {
+    email.dispose();
+    password.dispose();
+    name.dispose();
+    phone.dispose();
+    dogName.dispose();
+    breed.dispose();
+    age.dispose();
+    dateOfBirth.dispose();
+    experience.dispose();
+    notes.dispose();
+    super.dispose();
   }
 
   @override
@@ -145,6 +247,12 @@ class _AuthScreenState extends State<AuthScreen> {
                   ],
                   const SizedBox(height: 16),
                   FilledButton(onPressed: busy ? null : submit, child: Text(busy ? 'Please wait...' : registering ? 'Create account' : 'Sign in')),
+                  if (!registering)
+                    TextButton.icon(
+                      onPressed: busy ? null : resetPassword,
+                      icon: const Icon(Icons.lock_reset),
+                      label: const Text('Forgot password?'),
+                    ),
                   TextButton(
                     onPressed: busy ? null : () => setState(() { registering = !registering; error = ''; }),
                     child: Text(registering ? 'Already registered? Sign in' : 'New learner? Create account'),

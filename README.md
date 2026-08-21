@@ -1,6 +1,11 @@
-# Menai Muttineers Academy V1.2
+# Menai Muttineers Academy V1.2.1
 
 A shared Flutter Android + web training platform for the Menai Muttineers remote Pre-Flyball Academy.
+
+## V1.2.1 highlights
+- Added **Forgot password?** on the sign-in screen using secure Firebase password-reset emails.
+- Learners, trainers and admins can reset their own password without Captain/Admin access to the password.
+- Existing V1.2 features remain unchanged.
 
 ## V1.2 highlights
 - 8 structured Key Skills with 5–9 video lessons each.

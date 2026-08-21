@@ -1,4 +1,4 @@
-# Menai Muttineers Academy V1.2 — Test Checklist
+# Menai Muttineers Academy V1.2.1 — Test Checklist
 
 Use one pretend learner and dog before inviting the real course.
 
@@ -17,6 +17,15 @@ Use one pretend learner and dog before inviting the real course.
 - [ ] Captain can paste/save lesson YouTube URLs for several Key Skills.
 - [ ] Captain can update the weekly Google Meet information.
 - [ ] Captain can publish a notice.
+
+
+## Password reset
+- [ ] Sign-out screen shows **Forgot password?**.
+- [ ] Reset dialog accepts the learner’s email address.
+- [ ] Firebase password-reset email arrives.
+- [ ] Reset link allows a new password to be chosen.
+- [ ] New password signs into both APK and web app.
+- [ ] Existing trophies, lesson progress and account role remain unchanged after resetting the password.
 
 ## Learner registration / access
 - [ ] Create a new learner and dog.

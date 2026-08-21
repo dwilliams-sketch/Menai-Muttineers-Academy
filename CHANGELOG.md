@@ -1,5 +1,15 @@
 # Menai Muttineers Academy — Changelog
 
+## V1.2.1 — Password Reset
+
+### Login & account recovery
+- Added **Forgot password?** to the sign-in screen.
+- User enters their Academy email address and Firebase sends a secure password-reset email.
+- Passwords remain private; Captain/Admin cannot see or recover a learner’s password.
+- Added clear messages for invalid email, connection problems and too many attempts.
+- Reset instructions remind users to check their junk/spam folder.
+- No Firestore rules change is required for this patch.
+
 ## V1.2.0 — Training Paths, Trophy Cabinet & Treasure Chest
 
 ### Training course
