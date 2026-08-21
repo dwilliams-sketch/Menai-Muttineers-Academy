@@ -39,12 +39,13 @@ class _StaffShellState extends State<StaffShell> {
     if (index >= pages.length) index = 0;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.profile.isAdmin ? 'Captain/Admin — Academy' : 'Trainer — Academy'),
+        title: Text(widget.profile.isAdmin ? 'Captain/Admin — Academy V1.2' : 'Trainer — Academy V1.2'),
         actions: [IconButton(onPressed: () => FirebaseAuth.instance.signOut(), icon: const Icon(Icons.logout))],
       ),
       body: pages[index],
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         onDestinationSelected: (v) => setState(() => index = v),
         destinations: destinations,
       ),
@@ -70,9 +71,10 @@ class StaffDashboard extends StatelessWidget {
             Wrap(spacing: 10, runSpacing: 10, children: [
               _CountCard(title: 'Learners', stream: service.allUsers(), count: (docs) => docs.where((d) => d.data()['role'] == 'learner').length),
               _CountCard(title: 'Awaiting payment', stream: service.allUsers(), count: (docs) => docs.where((d) => d.data()['role'] == 'learner' && d.data()['paymentStatus'] == 'unpaid').length),
-              _CountCard(title: 'Videos waiting', stream: service.allSubmissions(), count: (docs) => docs.where((d) => d.data()['status'] == 'waiting').length),
+              _CountCard(title: 'Assessments waiting', stream: service.allSubmissions(), count: (docs) => docs.where((d) => d.data()['status'] == 'waiting').length),
               _CountCard(title: 'Open questions', stream: service.allQuestions(), count: (docs) => docs.where((d) => d.data()['status'] == 'open').length),
               _CountCard(title: '1-to-1 requests', stream: service.allOneToOnes(), count: (docs) => docs.where((d) => d.data()['status'] == 'requested').length),
+              _CountCard(title: 'Merch interest', stream: service.allMerchInterest(), count: (docs) => docs.length),
             ]),
             const SizedBox(height: 14),
             Text('Needs a nudge', style: Theme.of(context).textTheme.titleLarge),
@@ -179,6 +181,7 @@ class ReviewQueue extends StatelessWidget {
       moduleId: m['moduleId'] ?? '',
       trophyTitle: m['trophyTitle'] ?? 'Achievement',
       moduleTitle: m['moduleTitle'] ?? 'Skill',
+      artKey: m['artKey'] ?? 'firstskill',
       reviewerName: profile.name,
       feedback: feedback.text,
       passed: passed,
@@ -194,10 +197,11 @@ class ReviewQueue extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text('Videos Awaiting Review', style: Theme.of(context).textTheme.headlineSmall),
+            Text('Assessments Awaiting Review', style: Theme.of(context).textTheme.headlineSmall),
+            const Text('Learners can only reach this queue after completing all lessons in that Key Skill.'),
             const SizedBox(height: 8),
             if (!snap.hasData) const LinearProgressIndicator(),
-            if (snap.hasData && docs.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No videos are waiting.'))),
+            if (snap.hasData && docs.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No assessments are waiting.'))),
             ...docs.map((d) {
               final m = d.data();
               return Card(
@@ -242,9 +246,7 @@ class QuestionQueue extends StatelessWidget {
         ],
       ),
     );
-    if (ok == true && controller.text.trim().isNotEmpty) {
-      await service.answerQuestion(doc.id, controller.text, profile.name);
-    }
+    if (ok == true && controller.text.trim().isNotEmpty) await service.answerQuestion(doc.id, controller.text, profile.name);
   }
 
   @override
@@ -295,7 +297,7 @@ class OneToOneQueue extends StatelessWidget {
           child: SingleChildScrollView(
             child: Column(children: [
               DropdownButtonFormField<String>(
-                value: status,
+                initialValue: status,
                 decoration: const InputDecoration(labelText: 'Status'),
                 items: const ['requested', 'proposed', 'booked', 'completed', 'declined', 'cancelled'].map((e) => DropdownMenuItem(value: e, child: Text(e.toUpperCase()))).toList(),
                 onChanged: (v) => setLocal(() => status = v ?? status),
@@ -401,6 +403,7 @@ class LearnerList extends StatelessWidget {
                   final m = u.data();
                   final dog = dogByOwner[u.id] ?? {};
                   final paid = m['paymentStatus'] ?? 'unpaid';
+                  final streak = (m['loginStreak'] as num?)?.toInt() ?? 0;
                   return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(12),
@@ -408,6 +411,8 @@ class LearnerList extends StatelessWidget {
                         Text('${m['name'] ?? 'Learner'} & ${dog['name'] ?? 'Dog'}', style: Theme.of(context).textTheme.titleMedium),
                         Text('${m['email'] ?? ''} • ${m['phone'] ?? ''}'),
                         Text('Dog: ${dog['breed'] ?? ''} • ${dog['ageText'] ?? ''}'),
+                        if ((dog['dateOfBirth'] ?? '').toString().isNotEmpty) Text('DOB: ${dog['dateOfBirth']}${dog['dobEstimated'] == true ? ' (estimated)' : ''}'),
+                        Text('Login streak: $streak days'),
                         if ((dog['experience'] ?? '').toString().isNotEmpty) Text('Experience: ${dog['experience']}'),
                         if ((dog['notes'] ?? '').toString().isNotEmpty) Text('Notes: ${dog['notes']}'),
                         Text('Payment: ${paid.toString().toUpperCase()} • Access: ${(m['activated'] == true) ? 'ACTIVE' : 'LOCKED'}', style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -447,8 +452,10 @@ class _AdminCourseState extends State<AdminCourse> {
   final meetWhen = TextEditingController();
   final meetTopic = TextEditingController();
   final meetUrl = TextEditingController();
-  final moduleControllers = <String, TextEditingController>{};
+  final lessonControllers = <String, TextEditingController>{};
   bool loaded = false;
+
+  String _controllerKey(String moduleId, String lessonId) => '$moduleId::$lessonId';
 
   @override
   Widget build(BuildContext context) {
@@ -456,9 +463,10 @@ class _AdminCourseState extends State<AdminCourse> {
       padding: const EdgeInsets.all(16),
       children: [
         Center(child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
+          constraints: const BoxConstraints(maxWidth: 950),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text('Captain/Admin Controls', style: Theme.of(context).textTheme.headlineSmall),
+            const Text('V1.2 — live sessions, lesson videos, notices and crew roles can all be managed here.'),
             const SizedBox(height: 10),
             StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: service.settings(),
@@ -493,22 +501,39 @@ class _AdminCourseState extends State<AdminCourse> {
               },
             ),
             const SizedBox(height: 10),
-            Text('Training videos', style: Theme.of(context).textTheme.titleLarge),
+            Text('Key Skill video lessons', style: Theme.of(context).textTheme.titleLarge),
+            const Text('Each Key Skill now contains 5–9 lessons. Paste an unlisted YouTube URL into every lesson you want learners to complete.'),
             ...courseModules.map((module) => StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: service.moduleSettings(module.id),
               builder: (context, snap) {
-                final controller = moduleControllers.putIfAbsent(module.id, () => TextEditingController());
-                if (controller.text.isEmpty && snap.hasData) controller.text = snap.data!.data()?['videoUrl'] ?? '';
-                return Card(child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    Text('${module.stage}: ${module.title}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    TextField(controller: controller, decoration: const InputDecoration(labelText: 'YouTube URL')),
-                    const SizedBox(height: 6),
-                    Align(alignment: Alignment.centerRight, child: OutlinedButton(onPressed: () => service.saveModuleVideo(module.id, controller.text), child: const Text('Save video'))),
-                  ]),
-                ));
+                final data = snap.data?.data() ?? {};
+                final videos = Map<String, dynamic>.from(data['lessonVideos'] as Map? ?? {});
+                final oldVideo = (data['videoUrl'] ?? '').toString();
+                return Card(
+                  child: ExpansionTile(
+                    title: Text('${module.stage}: ${module.title}'),
+                    subtitle: Text('${module.lessons.length} lessons • Trophy: ${module.trophyTitle}'),
+                    childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    children: module.lessons.asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final lesson = entry.value;
+                      final key = _controllerKey(module.id, lesson.id);
+                      final controller = lessonControllers.putIfAbsent(key, () => TextEditingController());
+                      if (controller.text.isEmpty) controller.text = (videos[lesson.id] ?? (i == 0 ? oldVideo : '')).toString();
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                          Expanded(child: TextField(controller: controller, decoration: InputDecoration(labelText: '${i + 1}. ${lesson.title} — YouTube URL'))),
+                          const SizedBox(width: 8),
+                          OutlinedButton(onPressed: () async {
+                            await service.saveLessonVideo(module.id, lesson.id, controller.text);
+                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${lesson.title} saved.')));
+                          }, child: const Text('Save')),
+                        ]),
+                      );
+                    }).toList(),
+                  ),
+                );
               },
             )),
             const SizedBox(height: 10),
@@ -521,6 +546,34 @@ class _AdminCourseState extends State<AdminCourse> {
                 subtitle: Text(d.data()['message'] ?? ''),
                 trailing: IconButton(onPressed: () => service.removeNotice(d.id), icon: const Icon(Icons.delete_outline)),
               ))).toList()),
+            ),
+            const SizedBox(height: 14),
+            Text('Manage Crew & Staff', style: Theme.of(context).textTheme.titleLarge),
+            const Text('Promote registered accounts to Trainer or Admin without going back into Firebase.'),
+            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: service.allUsers(),
+              builder: (context, snap) {
+                final docs = [...(snap.data?.docs ?? [])]..sort((a, b) => (a.data()['name'] ?? '').toString().compareTo((b.data()['name'] ?? '').toString()));
+                return Column(children: docs.map((d) {
+                  final m = d.data();
+                  final role = (m['role'] ?? 'learner').toString();
+                  final self = d.id == widget.profile.id;
+                  return Card(child: ListTile(
+                    leading: Icon(role == 'admin' ? Icons.admin_panel_settings : role == 'trainer' ? Icons.sports : Icons.person),
+                    title: Text(m['name'] ?? 'User'),
+                    subtitle: Text('${m['email'] ?? ''}\nCurrent role: ${role.toUpperCase()}${self ? ' • You' : ''}'),
+                    isThreeLine: true,
+                    trailing: self ? const Chip(label: Text('Captain')) : PopupMenuButton<String>(
+                      onSelected: (v) => service.setUserRole(d.id, v),
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'learner', child: Text('Set as Learner')),
+                        PopupMenuItem(value: 'trainer', child: Text('Set as Trainer')),
+                        PopupMenuItem(value: 'admin', child: Text('Set as Admin')),
+                      ],
+                    ),
+                  ));
+                }).toList());
+              },
             ),
           ]),
         )),
@@ -541,7 +594,7 @@ class _AdminCourseState extends State<AdminCourse> {
           const SizedBox(height: 8),
           TextField(controller: message, maxLines: 4, decoration: const InputDecoration(labelText: 'Message')),
           const SizedBox(height: 8),
-          DropdownButtonFormField<String>(value: priority, items: const [DropdownMenuItem(value: 'normal', child: Text('Normal')), DropdownMenuItem(value: 'important', child: Text('Important'))], onChanged: (v) => setLocal(() => priority = v ?? priority), decoration: const InputDecoration(labelText: 'Priority')),
+          DropdownButtonFormField<String>(initialValue: priority, items: const [DropdownMenuItem(value: 'normal', child: Text('Normal')), DropdownMenuItem(value: 'important', child: Text('Important'))], onChanged: (v) => setLocal(() => priority = v ?? priority), decoration: const InputDecoration(labelText: 'Priority')),
         ])),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),

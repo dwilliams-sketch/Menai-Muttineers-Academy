@@ -1,74 +1,29 @@
-# Menai Muttineers Pre-Flyball Academy — Universal V1
+# Menai Muttineers Academy V1.2
 
-One shared Academy system for:
+A shared Flutter Android + web training platform for the Menai Muttineers remote Pre-Flyball Academy.
 
-- Android APK users
-- Web browser users
-- Trainers
-- Captain/Admin
+## V1.2 highlights
+- 8 structured Key Skills with 5–9 video lessons each.
+- Learner lesson progress: Watched / Practised / Confident / Need Help.
+- Assessments unlock after every lesson in the Key Skill is practised.
+- Trainer review with Pass + Trophy or Keep Practising.
+- Shadowed Trophy Cabinet with hidden `???` awards.
+- Trophy reveal pop-ups, confetti/party-popper animation and celebration sound.
+- Automatic first-login, 7-day, 14-day, 30-day, first-lesson, first-assessment, first-skill and birthday trophies.
+- Dog date of birth with estimated-date option.
+- Menai Muttineers Treasure Chest merch teaser + interest collection.
+- Captain/Admin can manage learner/trainer/admin roles inside the app.
+- Existing payment/access-code, 1-to-1, Ask a Trainer, diary, notices and Google Meet features retained.
 
-Both the APK and the web app use the same Firebase Authentication and Firestore database. A change made on one device is visible on the other.
+## Platforms
+The same Flutter codebase builds:
+- Android APK.
+- Web app deployed through GitHub Pages.
 
-## Learner V1
+Both use the same Firebase Authentication and Cloud Firestore data.
 
-- Self-registration for handler and dog
-- Manual payment gate
-- Six-character access code after payment
-- Eight self-paced Pre-Flyball modules
-- YouTube lessons embedded in the course
-- Exercise guidance
-- Video-link submission for trainer review
-- Pass / Keep Practising feedback
-- Trainer-approved digital trophies
-- Trophy Cabinet
-- Ready to Join the Crew completion achievement
-- Training diary
-- Ask a Trainer
-- Weekly Google Meet button
-- Captain notices
-- Editable dog profile
-- 1-to-1 trainer request
-- Accept a proposed 1-to-1 time
-- Join a booked online 1-to-1 from its Meet link
-- See trainer homework after the session
+## Important before V1.2 testing
+Publish the updated `firestore.rules` in Firebase. See `V1_2_UPGRADE_GUIDE.md`.
 
-## Trainer V1
-
-- Overview dashboard
-- Review submitted videos
-- Pass a skill and award a trophy
-- Send Keep Practising feedback
-- Answer learner questions
-- See all learners and dogs
-- See inactive learners (14+ days)
-- See common question/training topics
-- See and manage 1-to-1 requests
-- Assign trainer
-- Propose date/time
-- Add Google Meet link
-- Record session notes and homework
-- Mark a 1-to-1 completed
-
-## Captain/Admin V1
-
-Everything a trainer can do, plus:
-
-- Mark learner Paid / Unpaid
-- Complimentary access
-- Generate/regenerate access code
-- Lock course access
-- Update weekly Google Meet details
-- Update each course YouTube URL without rebuilding the app
-- Publish/remove Captain notices
-- See payment, video, question and 1-to-1 counts
-
-## Build outputs
-
-GitHub Actions creates two outputs from the SAME Flutter code:
-
-1. `Menai-Muttineers-Academy-V1-APK` — installable Android APK
-2. `Menai-Muttineers-Academy-V1-Web` — web build backup
-
-It also publishes the web build through GitHub Pages once Pages is enabled for the repository.
-
-Read `SETUP_GUIDE.md` before the first build.
+## Build
+The GitHub Actions workflow at `.github/workflows/build-apps.yml` builds both platforms using the Firebase repository secrets already configured for this project.

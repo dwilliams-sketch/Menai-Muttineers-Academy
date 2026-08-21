@@ -6,13 +6,22 @@ service cloud.firestore {
     function role() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
     function staff() { return signedIn() && (role() == 'admin' || role() == 'trainer'); }
     function admin() { return signedIn() && role() == 'admin'; }
+    function dogOwner(dogId) {
+      return signedIn() && get(/databases/$(database)/documents/dogs/$(dogId)).data.ownerId == request.auth.uid;
+    }
+    function automaticTrophyId(trophyId) {
+      return trophyId in ['first_login', 'streak_7', 'streak_14', 'streak_30', 'first_lesson', 'first_assessment']
+        || trophyId.matches('birthday_[0-9]{4}');
+    }
 
     match /users/{uid} {
       allow create: if self(uid) && request.resource.data.role == 'learner';
       allow read: if self(uid) || staff();
       allow update: if admin() || (
         self(uid)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activated', 'lastActiveAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'activated', 'lastActiveAt', 'loginStreak', 'lastLoginDay', 'celebrationSound'
+        ])
         && request.resource.data.role == resource.data.role
         && request.resource.data.paymentStatus == resource.data.paymentStatus
         && request.resource.data.accessCodeHash == resource.data.accessCodeHash
@@ -28,8 +37,25 @@ service cloud.firestore {
       allow delete: if admin();
 
       match /trophies/{trophyId} {
-        allow read: if signedIn() && (get(/databases/$(database)/documents/dogs/$(dogId)).data.ownerId == request.auth.uid || staff());
-        allow create, update, delete: if staff();
+        allow read: if dogOwner(dogId) || staff();
+        allow create: if staff() || (
+          dogOwner(dogId)
+          && automaticTrophyId(trophyId)
+          && request.resource.data.automatic == true
+          && request.resource.data.accepted == false
+        );
+        allow update: if staff() || (
+          dogOwner(dogId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accepted', 'acceptedAt'])
+          && request.resource.data.accepted == true
+        );
+        allow delete: if admin();
+      }
+
+      match /skillProgress/{moduleId} {
+        allow read: if dogOwner(dogId) || staff();
+        allow create, update: if dogOwner(dogId) || staff();
+        allow delete: if admin();
       }
     }
 
@@ -63,6 +89,12 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
         && request.resource.data.status in ['booked', 'cancelled']
       );
+      allow delete: if admin();
+    }
+
+    match /merchInterest/{uid} {
+      allow create, update: if self(uid) && request.resource.data.userId == request.auth.uid;
+      allow read: if self(uid) || staff();
       allow delete: if admin();
     }
 

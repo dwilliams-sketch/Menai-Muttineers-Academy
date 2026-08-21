@@ -24,7 +24,7 @@ Use this exact package name:
 
 `com.menaimuttineers.academy`
 
-You do not need to put `google-services.json` in this repository. This V1 passes Firebase configuration safely into both builds through GitHub Actions.
+You do not need to put `google-services.json` in this repository. This V1.2 build passes Firebase configuration safely into both builds through GitHub Actions.
 
 ### 4. Web app in Firebase
 
@@ -95,23 +95,19 @@ A successful run gives you:
 
 You will now see the Captain/Admin screens.
 
-## F. Add trainers
+## F. Add trainers / admins
 
-A trainer registers once in the normal way.
+A trainer or additional admin registers once in the normal way.
 
-In Firestore → `users` → their record, change:
+In V1.2 the Captain can then use **Admin → Manage Crew & Staff** and change their role to **Trainer** or **Admin** directly in the app.
 
-`role: learner`
+The original Captain account still needs the one-time Firebase role change described above. After that, normal staff-role changes can be managed in the Academy.
 
-to:
+Trainers can review skills, award trophies, reply to questions and manage 1-to-1 requests. Admins also get payment, lesson, notice and staff-role controls.
 
-`role: trainer`
+## G. Payment and access in V1.2
 
-They can then review skills, award trophies, reply to questions and manage 1-to-1 requests. They cannot change payments or Captain course settings.
-
-## G. Payment and access in V1
-
-Payment is deliberately manual in V1.
+Payment is deliberately manual in V1.2.
 
 Captain/Admin opens Learners and presses **Mark paid + issue code**.
 
@@ -128,7 +124,7 @@ Captain/Admin → Admin:
 - Set the next live-session date/time
 - Set the topic
 - Paste the shared Google Meet URL
-- Paste a YouTube URL for each module
+- Expand each Key Skill and paste a YouTube URL for each individual lesson
 
 These are database changes. You do not rebuild the APK when a lesson or Meet link changes.
 

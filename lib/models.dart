@@ -18,6 +18,9 @@ class AppUser {
   final String accessCodeHash;
   final DateTime? createdAt;
   final DateTime? lastActiveAt;
+  final int loginStreak;
+  final String lastLoginDay;
+  final bool celebrationSound;
 
   const AppUser({
     required this.id,
@@ -31,6 +34,9 @@ class AppUser {
     required this.accessCodeHash,
     required this.createdAt,
     required this.lastActiveAt,
+    required this.loginStreak,
+    required this.lastLoginDay,
+    required this.celebrationSound,
   });
 
   factory AppUser.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -47,6 +53,9 @@ class AppUser {
       accessCodeHash: d['accessCodeHash'] ?? '',
       createdAt: dateFrom(d['createdAt']),
       lastActiveAt: dateFrom(d['lastActiveAt']),
+      loginStreak: (d['loginStreak'] as num?)?.toInt() ?? 0,
+      lastLoginDay: d['lastLoginDay'] ?? '',
+      celebrationSound: d['celebrationSound'] != false,
     );
   }
 
@@ -61,6 +70,8 @@ class DogProfile {
   final String name;
   final String breed;
   final String ageText;
+  final String dateOfBirth;
+  final bool dobEstimated;
   final String experience;
   final String notes;
   final String photoUrl;
@@ -71,6 +82,8 @@ class DogProfile {
     required this.name,
     required this.breed,
     required this.ageText,
+    required this.dateOfBirth,
+    required this.dobEstimated,
     required this.experience,
     required this.notes,
     required this.photoUrl,
@@ -84,6 +97,8 @@ class DogProfile {
       name: d['name'] ?? '',
       breed: d['breed'] ?? '',
       ageText: d['ageText'] ?? '',
+      dateOfBirth: d['dateOfBirth'] ?? '',
+      dobEstimated: d['dobEstimated'] == true,
       experience: d['experience'] ?? '',
       notes: d['notes'] ?? '',
       photoUrl: d['photoUrl'] ?? '',

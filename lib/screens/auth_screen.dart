@@ -12,6 +12,7 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   bool registering = false;
   bool busy = false;
+  bool dobEstimated = false;
   String error = '';
 
   final email = TextEditingController();
@@ -21,9 +22,24 @@ class _AuthScreenState extends State<AuthScreen> {
   final dogName = TextEditingController();
   final breed = TextEditingController();
   final age = TextEditingController();
+  final dateOfBirth = TextEditingController();
   final experience = TextEditingController();
   final notes = TextEditingController();
   final service = FirestoreService();
+
+  Future<void> pickDob() async {
+    final now = DateTime.now();
+    final chosen = await showDatePicker(
+      context: context,
+      firstDate: DateTime(now.year - 30),
+      lastDate: now,
+      initialDate: DateTime(now.year - 2, now.month, now.day),
+      helpText: 'Dog date of birth — best guess is fine',
+    );
+    if (chosen != null) {
+      dateOfBirth.text = '${chosen.year.toString().padLeft(4, '0')}-${chosen.month.toString().padLeft(2, '0')}-${chosen.day.toString().padLeft(2, '0')}';
+    }
+  }
 
   Future<void> submit() async {
     if (email.text.trim().isEmpty || password.text.length < 6) {
@@ -49,6 +65,8 @@ class _AuthScreenState extends State<AuthScreen> {
           dogName: dogName.text,
           breed: breed.text,
           ageText: age.text,
+          dateOfBirth: dateOfBirth.text,
+          dobEstimated: dobEstimated,
           experience: experience.text,
           notes: notes.text,
         );
@@ -94,8 +112,25 @@ class _AuthScreenState extends State<AuthScreen> {
                     const SizedBox(height: 10),
                     TextField(controller: breed, decoration: const InputDecoration(labelText: 'Breed')),
                     const SizedBox(height: 10),
-                    TextField(controller: age, decoration: const InputDecoration(labelText: 'Dog’s age')),
+                    TextField(controller: age, decoration: const InputDecoration(labelText: 'Dog’s age (optional)')),
                     const SizedBox(height: 10),
+                    TextField(
+                      controller: dateOfBirth,
+                      readOnly: true,
+                      onTap: pickDob,
+                      decoration: const InputDecoration(
+                        labelText: 'Dog’s date of birth (optional)',
+                        hintText: 'Best guess is fine',
+                        suffixIcon: Icon(Icons.cake_outlined),
+                      ),
+                    ),
+                    CheckboxListTile(
+                      value: dobEstimated,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('This date is an estimate'),
+                      subtitle: const Text('That is absolutely fine — we mainly use it for birthday celebrations.'),
+                      onChanged: (v) => setState(() => dobEstimated = v ?? false),
+                    ),
                     TextField(controller: experience, minLines: 2, maxLines: 3, decoration: const InputDecoration(labelText: 'Previous training experience')),
                     const SizedBox(height: 10),
                     TextField(controller: notes, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Anything the trainers should know')),
