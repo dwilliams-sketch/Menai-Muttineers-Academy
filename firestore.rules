@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function self(uid) { return signedIn() && request.auth.uid == uid; }
+    function role() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
+    function staff() { return signedIn() && (role() == 'admin' || role() == 'trainer'); }
+    function admin() { return signedIn() && role() == 'admin'; }
+
+    match /users/{uid} {
+      allow create: if self(uid) && request.resource.data.role == 'learner';
+      allow read: if self(uid) || staff();
+      allow update: if admin() || (
+        self(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activated', 'lastActiveAt'])
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.paymentStatus == resource.data.paymentStatus
+        && request.resource.data.accessCodeHash == resource.data.accessCodeHash
+        && (!request.resource.data.activated || resource.data.paymentStatus in ['paid', 'complimentary'])
+      );
+      allow delete: if admin();
+    }
+
+    match /dogs/{dogId} {
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.ownerId == request.auth.uid || staff());
+      allow update: if signedIn() && (resource.data.ownerId == request.auth.uid || staff());
+      allow delete: if admin();
+
+      match /trophies/{trophyId} {
+        allow read: if signedIn() && (get(/databases/$(database)/documents/dogs/$(dogId)).data.ownerId == request.auth.uid || staff());
+        allow create, update, delete: if staff();
+      }
+    }
+
+    match /submissions/{id} {
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || staff());
+      allow update: if staff();
+      allow delete: if admin();
+    }
+
+    match /questions/{id} {
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || staff());
+      allow update: if staff();
+      allow delete: if admin();
+    }
+
+    match /trainingLogs/{id} {
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || staff());
+      allow delete: if signedIn() && (resource.data.userId == request.auth.uid || admin());
+      allow update: if false;
+    }
+
+    match /oneToOneRequests/{id} {
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || staff());
+      allow update: if staff() || (
+        signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status in ['booked', 'cancelled']
+      );
+      allow delete: if admin();
+    }
+
+    match /notices/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if admin();
+    }
+
+    match /settings/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if admin();
+    }
+
+    match /courseModules/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if admin();
+    }
+  }
+}

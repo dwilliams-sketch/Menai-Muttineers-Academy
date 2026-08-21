@@ -1,0 +1,31 @@
+# V1 Test Checklist
+
+- [ ] GitHub workflow builds with a green tick
+- [ ] APK artifact downloads and installs
+- [ ] GitHub Pages link opens on a computer/phone
+- [ ] Register learner in web app
+- [ ] Same learner can sign into APK
+- [ ] Captain sees learner as Unpaid
+- [ ] Captain marks learner Paid and receives access code
+- [ ] Learner enters code and course unlocks
+- [ ] Captain adds a YouTube lesson
+- [ ] Lesson appears in both web and APK
+- [ ] Captain adds weekly Google Meet details
+- [ ] Meet details appear on learner Home
+- [ ] Learner submits training video link
+- [ ] Trainer sees video in Reviews
+- [ ] Trainer uses Keep Practising and learner sees feedback
+- [ ] Learner resubmits
+- [ ] Trainer passes skill
+- [ ] Trophy appears in Trophy Cabinet
+- [ ] Learner asks a trainer question
+- [ ] Trainer replies and learner sees the reply
+- [ ] Learner adds training diary entry
+- [ ] Learner requests a 1-to-1
+- [ ] Trainer proposes a time and adds Meet link
+- [ ] Learner accepts the time
+- [ ] Booked session shows on both web and APK
+- [ ] Trainer adds homework and marks Completed
+- [ ] Learner sees homework
+- [ ] Captain publishes a notice
+- [ ] Notice appears on learner Home
