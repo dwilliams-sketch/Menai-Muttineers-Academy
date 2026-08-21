@@ -1,3 +1,11 @@
+# Changelog
+
+## 1.2.2 — Password reset pop-up fix
+- Fixed a Flutter debug crash that could appear when opening/closing the Forgot Password dialog.
+- Removed the temporary TextEditingController from the reset dialog.
+- Password reset continues to use Firebase Authentication securely.
+- No Firestore rules change is required.
+
 # Menai Muttineers Academy — Changelog
 
 ## V1.2.1 — Password Reset

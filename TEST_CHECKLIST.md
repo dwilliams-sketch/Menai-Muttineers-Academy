@@ -83,3 +83,10 @@ Note: 7, 14 and 30-day streak trophies are best checked over real days rather th
 - [ ] Learner accepts booking.
 - [ ] Training diary saves entries.
 - [ ] Captain notice appears to learner.
+
+## V1.2.2 password reset regression test
+- [ ] Tap Forgot password? and confirm the dialog opens without a red Flutter error screen.
+- [ ] Enter an account email and tap Send reset link.
+- [ ] Confirm the dialog closes cleanly.
+- [ ] Confirm a reset email is received (also check junk/spam).
+- [ ] Reset the password and sign in with the new password.

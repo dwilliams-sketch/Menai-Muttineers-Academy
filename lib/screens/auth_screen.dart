@@ -28,7 +28,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final service = FirestoreService();
 
   Future<void> resetPassword() async {
-    final resetEmail = TextEditingController(text: email.text.trim());
+    String addressDraft = email.text.trim();
 
     final submittedEmail = await showDialog<String>(
       context: context,
@@ -42,13 +42,15 @@ class _AuthScreenState extends State<AuthScreen> {
               'Enter the email address you used for the Academy. We’ll send you a secure link to choose a new password.',
             ),
             const SizedBox(height: 14),
-            TextField(
-              controller: resetEmail,
+            TextFormField(
+              initialValue: addressDraft,
               autofocus: true,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.done,
               decoration: const InputDecoration(labelText: 'Email address'),
-              onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+              onChanged: (value) => addressDraft = value,
+              onFieldSubmitted: (value) =>
+                  Navigator.of(dialogContext).pop(value),
             ),
           ],
         ),
@@ -58,14 +60,13 @@ class _AuthScreenState extends State<AuthScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(resetEmail.text),
+            onPressed: () => Navigator.of(dialogContext).pop(addressDraft),
             child: const Text('Send reset link'),
           ),
         ],
       ),
     );
 
-    resetEmail.dispose();
     if (!mounted || submittedEmail == null) return;
 
     final address = submittedEmail.trim();
@@ -95,11 +96,12 @@ class _AuthScreenState extends State<AuthScreen> {
       if (e.code == 'invalid-email') {
         setState(() => error = 'Please enter a valid email address.');
       } else if (e.code == 'too-many-requests') {
-        setState(() => error = 'There have been too many attempts. Please wait a little while and try again.');
+        setState(() => error =
+            'There have been too many attempts. Please wait a little while and try again.');
       } else if (e.code == 'network-request-failed') {
-        setState(() => error = 'We could not reach the internet. Please check your connection and try again.');
+        setState(() => error =
+            'We could not reach the internet. Please check your connection and try again.');
       } else {
-        // Keep the response neutral so the app does not reveal whether an email is registered.
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
