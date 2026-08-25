@@ -78,6 +78,26 @@ jobs:
           m.write_text(text)
           PY
 
+          # Force Android plugin registration on the FlutterEngine.
+          # The APK contains FlutterFirebaseCorePlugin, but the installed app is
+          # currently reaching Firebase before a native host channel is attached.
+          cat > android/app/src/main/kotlin/com/menaimuttineers/academy/MainActivity.kt <<'KOTLIN'
+          package com.menaimuttineers.academy
+
+          import io.flutter.embedding.android.FlutterActivity
+          import io.flutter.embedding.engine.FlutterEngine
+          import io.flutter.plugins.GeneratedPluginRegistrant
+
+          class MainActivity : FlutterActivity() {
+              override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+                  // Do not call super here: FlutterActivity's default implementation
+                  // performs automatic registration. We register the generated list
+                  // explicitly so it is guaranteed to be attached to this engine.
+                  GeneratedPluginRegistrant.registerWith(flutterEngine)
+              }
+          }
+          KOTLIN
+
       - name: Apply Menai Muttineers app icons
         run: |
           cp branding/android/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png
@@ -115,13 +135,13 @@ jobs:
           grep -R "FlutterFirebaseCorePlugin" android build -n 2>/dev/null | head -20 || true
 
       - name: Give APK a friendly name
-        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.2.apk
+        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.3.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-3-2-APK
-          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.2.apk
+          name: Menai-Muttineers-Academy-V1-3-3-APK
+          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.3.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -141,7 +161,7 @@ jobs:
       - name: Upload Web build backup
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-3-2-Web
+          name: Menai-Muttineers-Academy-V1-3-3-Web
           path: build/web
           if-no-files-found: error
           retention-days: 7
