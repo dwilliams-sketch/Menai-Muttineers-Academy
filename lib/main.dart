@@ -202,7 +202,7 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Compatibility fix V1.3.5',
+                      'Auth bridge fix V1.3.6',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
