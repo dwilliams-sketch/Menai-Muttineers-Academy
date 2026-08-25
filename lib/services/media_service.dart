@@ -15,7 +15,7 @@ class MediaService {
     );
     if (picked == null) return null;
     final bytes = await picked.readAsBytes();
-    return _upload(bytes, 'profiles/$uid.jpg');
+    return _upload(bytes, 'profiles/$uid/profile.jpg');
   }
 
   Future<String?> pickAndUploadDog({required String dogId, required bool enabled}) async {
@@ -28,7 +28,7 @@ class MediaService {
     );
     if (picked == null) return null;
     final bytes = await picked.readAsBytes();
-    return _upload(bytes, 'dogs/$dogId.jpg');
+    return _upload(bytes, 'dogs/$dogId/profile.jpg');
   }
 
   Future<String> _upload(Uint8List bytes, String path) async {
