@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../i18n.dart';
@@ -63,12 +64,18 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     setState(() { busy = true; error = ''; });
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: address);
+      await FirebaseAuth.instance
+          .sendPasswordResetEmail(email: address)
+          .timeout(const Duration(seconds: 20));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: I18nText('Password reset email sent. Check your inbox and junk/spam folder.'),
         duration: Duration(seconds: 7),
       ));
+    } on TimeoutException {
+      if (!mounted) return;
+      setState(() => error =
+          'Firebase Auth did not reply within 20 seconds. This is an app connection problem, not your password.');
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       setState(() => error = e.code == 'too-many-requests'
@@ -76,6 +83,9 @@ class _AuthScreenState extends State<AuthScreen> {
           : e.code == 'network-request-failed'
               ? 'Please check your internet connection and try again.'
               : 'If an Academy account exists for that email, a reset link will be sent.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => error = 'Password reset connection error: $e');
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -103,9 +113,21 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     setState(() { busy = true; error = ''; });
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(email: email.text.trim(), password: password.text);
+      await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+            email: email.text.trim(),
+            password: password.text,
+          )
+          .timeout(const Duration(seconds: 20));
+    } on TimeoutException {
+      if (mounted) {
+        setState(() => error =
+            'Firebase Auth did not reply within 20 seconds. This is an app connection problem, not your password.');
+      }
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => error = e.message ?? 'Could not sign in.');
+    } catch (e) {
+      if (mounted) setState(() => error = 'Sign-in connection error: $e');
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -131,7 +153,12 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     setState(() { busy = true; error = ''; });
     try {
-      final result = await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email.text.trim(), password: password.text);
+      final result = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: email.text.trim(),
+            password: password.text,
+          )
+          .timeout(const Duration(seconds: 20));
       await service.createLearner(
         uid: result.user!.uid,
         name: name.text,
@@ -147,10 +174,15 @@ class _AuthScreenState extends State<AuthScreen> {
         languageCode: LanguageController.current,
       );
       // Firebase keeps the new learner signed in. AuthGate takes them straight to their waiting/account screen.
+    } on TimeoutException {
+      if (mounted) {
+        setState(() => error =
+            'Firebase Auth did not reply within 20 seconds. Please try again after the app connection is restored.');
+      }
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => error = e.message ?? 'Could not create your account.');
-    } catch (_) {
-      if (mounted) setState(() => error = 'Something went wrong while creating the Academy profile.');
+    } catch (e) {
+      if (mounted) setState(() => error = 'Account connection error: $e');
     } finally {
       if (mounted) setState(() => busy = false);
     }
