@@ -1,5 +1,12 @@
 # Changelog
 
+## V1.3 build 9 — Firebase dependency stability fix
+- Pinned FlutterFire packages to a known-compatible release set.
+- Prevents a newly released firebase_auth package from being pulled automatically during GitHub builds.
+- Avoids the firebase_auth 6.6.0 Android/Kotlin compilation failure seen during testing.
+- GitHub APK and web backup artifacts now retain for 7 days to reduce stored build artifacts.
+- No Firebase console or Firestore changes are required for this compile fix.
+
 ## V1.3 build 8 — Cupertino import fix
 - Added the missing Flutter Cupertino import used by the iOS/macOS page transition builder.
 - No Firebase or Firestore changes are required for this patch.
