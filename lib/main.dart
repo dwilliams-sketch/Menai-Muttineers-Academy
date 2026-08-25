@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -16,9 +17,204 @@ import 'widgets/language_toggle.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await LanguageController.init();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const AcademyApp());
+
+  // Draw a Flutter screen immediately. Previously the app waited for
+  // SharedPreferences and Firebase before runApp(), so any startup problem
+  // left Android showing only the native logo indefinitely.
+  runApp(const AcademyBootstrap());
+}
+
+class AcademyBootstrap extends StatefulWidget {
+  const AcademyBootstrap({super.key});
+
+  @override
+  State<AcademyBootstrap> createState() => _AcademyBootstrapState();
+}
+
+class _AcademyBootstrapState extends State<AcademyBootstrap> {
+  bool _ready = false;
+  bool _starting = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _startAcademy();
+  }
+
+  Future<void> _startAcademy() async {
+    if (mounted) {
+      setState(() {
+        _starting = true;
+        _error = null;
+      });
+    }
+
+    // Language preference is helpful, but it must never prevent the app
+    // opening. English remains the safe fallback if local preferences fail.
+    try {
+      await LanguageController.init().timeout(const Duration(seconds: 5));
+    } catch (error, stack) {
+      debugPrint('Academy language startup warning: $error');
+      debugPrintStack(stackTrace: stack);
+    }
+
+    try {
+      final options = DefaultFirebaseOptions.currentPlatform;
+
+      // Give a clear diagnostic if a GitHub build secret was accidentally
+      // missing instead of leaving the native splash screen visible forever.
+      if (options.apiKey.isEmpty ||
+          options.appId.isEmpty ||
+          options.messagingSenderId.isEmpty ||
+          options.projectId.isEmpty) {
+        throw StateError(
+          'Firebase build settings are missing. Check the FIREBASE_* GitHub repository secrets and rebuild the app.',
+        );
+      }
+
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(options: options)
+            .timeout(const Duration(seconds: 20));
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _ready = true;
+        _starting = false;
+        _error = null;
+      });
+    } on TimeoutException catch (error, stack) {
+      debugPrint('Academy Firebase startup timeout: $error');
+      debugPrintStack(stackTrace: stack);
+      if (!mounted) return;
+      setState(() {
+        _starting = false;
+        _error =
+            'Firebase did not finish connecting within 20 seconds. Check your internet connection and tap Retry.';
+      });
+    } catch (error, stack) {
+      debugPrint('Academy Firebase startup error: $error');
+      debugPrintStack(stackTrace: stack);
+      if (!mounted) return;
+      setState(() {
+        _starting = false;
+        _error = _startupErrorText(error);
+      });
+    }
+  }
+
+  String _startupErrorText(Object error) {
+    if (error is FirebaseException) {
+      final message = error.message?.trim();
+      return 'Firebase ${error.code}${message == null || message.isEmpty ? '' : ': $message'}';
+    }
+
+    final text = error.toString().trim();
+    return text.isEmpty ? 'Unknown startup error.' : text;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_ready) return const AcademyApp();
+
+    const navy = Color(0xFF132238);
+    const gold = Color(0xFFD9A441);
+
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Menai Muttineers Academy',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: navy,
+          primary: navy,
+          secondary: gold,
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF7F8FA),
+        useMaterial3: true,
+      ),
+      home: Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(28),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.anchor, size: 72, color: navy),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Menai Muttineers Academy',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_starting) ...[
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Preparing the Academy…',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'This should only take a few seconds.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ] else ...[
+                      Icon(
+                        Icons.cloud_off_outlined,
+                        size: 48,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'The Academy could not finish starting.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Nothing has been deleted. Check your internet connection, then tap Retry.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const Text(
+                                'Startup details',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 6),
+                              SelectableText(_error ?? 'Unknown startup error.'),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      FilledButton.icon(
+                        onPressed: _startAcademy,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('RETRY'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class AcademyApp extends StatelessWidget {
