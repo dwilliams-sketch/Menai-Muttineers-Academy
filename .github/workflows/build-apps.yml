@@ -89,11 +89,15 @@ jobs:
           import io.flutter.plugin.common.MethodChannel
           import io.flutter.plugins.GeneratedPluginRegistrant
           import io.flutter.plugins.firebase.core.FlutterFirebaseCorePlugin
+          import io.flutter.plugins.firebase.auth.FlutterFirebaseAuthPlugin
 
           class MainActivity : FlutterActivity() {
               private var manualFirebaseCoreCompleted = false
               private var manualFirebaseCoreError: String? = null
               private var firebaseCoreListed = false
+              private var manualFirebaseAuthCompleted = false
+              private var manualFirebaseAuthError: String? = null
+              private var firebaseAuthListed = false
               private var generatedRegistrantCompleted = false
               private var generatedRegistrantError: String? = null
 
@@ -113,8 +117,21 @@ jobs:
                   firebaseCoreListed =
                       flutterEngine.plugins.has(FlutterFirebaseCorePlugin::class.java)
 
-                  // Register every other generated plugin. Firebase Core will be
-                  // skipped as already present if the first registration completed.
+                  // Register Firebase Auth explicitly as well. The login and
+                  // password-reset Futures are currently waiting forever, which
+                  // is what happens when Auth's Pigeon host channels are absent.
+                  try {
+                      flutterEngine.plugins.add(FlutterFirebaseAuthPlugin())
+                      manualFirebaseAuthCompleted = true
+                  } catch (t: Throwable) {
+                      manualFirebaseAuthError = t.stackTraceToString()
+                  }
+
+                  firebaseAuthListed =
+                      flutterEngine.plugins.has(FlutterFirebaseAuthPlugin::class.java)
+
+                  // Register every other generated plugin. Core/Auth will be
+                  // skipped as already present when their explicit registration worked.
                   try {
                       GeneratedPluginRegistrant.registerWith(flutterEngine)
                       generatedRegistrantCompleted = true
@@ -132,6 +149,9 @@ jobs:
                                   "manualFirebaseCoreCompleted" to manualFirebaseCoreCompleted,
                                   "manualFirebaseCoreError" to manualFirebaseCoreError,
                                   "firebaseCoreListed" to firebaseCoreListed,
+                                  "manualFirebaseAuthCompleted" to manualFirebaseAuthCompleted,
+                                  "manualFirebaseAuthError" to manualFirebaseAuthError,
+                                  "firebaseAuthListed" to firebaseAuthListed,
                                   "generatedRegistrantCompleted" to generatedRegistrantCompleted,
                                   "generatedRegistrantError" to generatedRegistrantError
                               )
@@ -168,8 +188,8 @@ jobs:
         run: |
           flutter clean
           flutter pub get
-          echo "=== Resolved Firebase Core compatibility set ==="
-          flutter pub deps --style=compact | grep -E "firebase_core($| )|firebase_core_platform_interface|firebase_core_web" || true
+          echo "=== Resolved Firebase Core + Auth compatibility set ==="
+          flutter pub deps --style=compact | grep -E "firebase_core($| )|firebase_core_platform_interface|firebase_core_web|firebase_auth($| )|firebase_auth_platform_interface|firebase_auth_web" || true
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -181,6 +201,9 @@ jobs:
               'firebase_core': 'firebase_core-4.12.1',
               'firebase_core_platform_interface': 'firebase_core_platform_interface-8.0.0',
               'firebase_core_web': 'firebase_core_web-3.9.1',
+              'firebase_auth': 'firebase_auth-6.5.6',
+              'firebase_auth_platform_interface': 'firebase_auth_platform_interface-9.0.5',
+              'firebase_auth_web': 'firebase_auth_web-6.2.5',
           }
 
           for name, marker in expected.items():
@@ -191,7 +214,7 @@ jobs:
                       f"Wrong {name} resolved. Expected {marker}, got {root}"
                   )
 
-          print("Firebase Core Dart/native compatibility check: PASS")
+          print("Firebase Core + Auth Dart/native compatibility check: PASS")
           PY
 
       - name: Build installable Android APK
@@ -210,16 +233,16 @@ jobs:
         run: |
           echo "Flutter generated plugin registrants:"
           find android build -name GeneratedPluginRegistrant.java -print 2>/dev/null || true
-          grep -R "FlutterFirebaseCorePlugin" android build -n 2>/dev/null | head -20 || true
+          grep -R -E "FlutterFirebaseCorePlugin|FlutterFirebaseAuthPlugin" android build -n 2>/dev/null | head -40 || true
 
       - name: Give APK a friendly name
-        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.5.apk
+        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.6.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-3-5-APK
-          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.5.apk
+          name: Menai-Muttineers-Academy-V1-3-6-APK
+          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.6.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -239,7 +262,7 @@ jobs:
       - name: Upload Web build backup
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-3-5-Web
+          name: Menai-Muttineers-Academy-V1-3-6-Web
           path: build/web
           if-no-files-found: error
           retention-days: 7
