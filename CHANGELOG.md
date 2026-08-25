@@ -1,5 +1,9 @@
 # Changelog
 
+## V1.3 build 8 — Cupertino import fix
+- Added the missing Flutter Cupertino import used by the iOS/macOS page transition builder.
+- No Firebase or Firestore changes are required for this patch.
+
 ## V1.3 build 7 — compile fix
 - Fixed missing closing parentheses in the learner app shell.
 - Fixed the Weekly Crew Catch-Up card nesting.
