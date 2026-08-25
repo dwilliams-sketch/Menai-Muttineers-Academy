@@ -1,36 +1,186 @@
-name: academy
-description: Menai Muttineers Pre-Flyball Academy - Android and Web V1.3.1
-publish_to: 'none'
-version: 1.3.2+11
-environment:
-  sdk: '>=3.10.0 <4.0.0'
+name: Build Academy APK and Web
 
-dependencies:
-  flutter:
-    sdk: flutter
-  flutter_localizations:
-    sdk: flutter
-  firebase_core: 4.12.1
-  firebase_auth: 6.5.6
-  cloud_firestore: 6.7.1
-  firebase_messaging: 16.4.3
-  firebase_storage: 13.4.5
-  cloud_functions: 6.3.5
-  image_picker: ^1.2.3
-  crypto: ^3.0.6
-  url_launcher: ^6.3.2
-  youtube_player_iframe: ^6.0.2
-  audioplayers: ^6.8.1
-  confetti: ^0.8.0
-  shared_preferences: ^2.5.3
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
 
-flutter:
-  uses-material-design: true
-  assets:
-    - assets/sounds/trophy_chime.wav
-    - assets/sounds/ship_bell.wav
-    - assets/sounds/parrot_squawk.wav
-    - assets/sounds/tiny_cannon.wav
-    - assets/sounds/aww_chime.wav
-    - assets/music/gentle_tide_1.mp3
-    - assets/music/gentle_tide_2.mp3
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.8'
+          channel: stable
+          cache: true
+
+      - name: Show Flutter version
+        run: flutter --version
+
+      - name: Generate Android and Web platform files
+        run: |
+          rm -rf platform_template android web
+          flutter create --platforms=android,web --org com.menaimuttineers --project-name academy platform_template
+          cp -R platform_template/android ./android
+          cp -R platform_template/web ./web
+          rm -rf platform_template
+          python3 - <<'PY'
+          from pathlib import Path
+
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
+          text = manifest.read_text()
+          text = text.replace('android:label="academy"', 'android:label="Menai Muttineers Academy"')
+          if 'android.permission.INTERNET' not in text:
+              text = text.replace(
+                  '>\n    <application',
+                  '>\n'
+                  '    <uses-permission android:name="android.permission.INTERNET"/>\n'
+                  '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n'
+                  '    <uses-permission android:name="android.permission.VIBRATE"/>\n'
+                  '    <application',
+                  1,
+              )
+          manifest.write_text(text)
+
+          gradle = Path('android/app/build.gradle.kts')
+          if gradle.exists():
+              g = gradle.read_text()
+              g = g.replace('minSdk = flutter.minSdkVersion', 'minSdk = 23')
+              gradle.write_text(g)
+
+          index = Path('web/index.html')
+          text = index.read_text().replace(
+              '<title>academy</title>',
+              '<title>Menai Muttineers Academy</title>',
+          )
+          index.write_text(text)
+
+          m = Path('web/manifest.json')
+          text = (
+              m.read_text()
+              .replace('"name": "academy"', '"name": "Menai Muttineers Academy"')
+              .replace('"short_name": "academy"', '"short_name": "Muttineers Academy"')
+          )
+          m.write_text(text)
+          PY
+
+          # Force Android plugin registration on the FlutterEngine.
+          # The APK contains FlutterFirebaseCorePlugin, but the installed app is
+          # currently reaching Firebase before a native host channel is attached.
+          cat > android/app/src/main/kotlin/com/menaimuttineers/academy/MainActivity.kt <<'KOTLIN'
+          package com.menaimuttineers.academy
+
+          import io.flutter.embedding.android.FlutterActivity
+          import io.flutter.embedding.engine.FlutterEngine
+          import io.flutter.plugins.GeneratedPluginRegistrant
+
+          class MainActivity : FlutterActivity() {
+              override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+                  // Do not call super here: FlutterActivity's default implementation
+                  // performs automatic registration. We register the generated list
+                  // explicitly so it is guaranteed to be attached to this engine.
+                  GeneratedPluginRegistrant.registerWith(flutterEngine)
+              }
+          }
+          KOTLIN
+
+      - name: Apply Menai Muttineers app icons
+        run: |
+          cp branding/android/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          cp branding/android/mipmap-hdpi/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          cp branding/android/mipmap-xhdpi/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          cp branding/android/mipmap-xxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          cp branding/android/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          cp branding/web/favicon.png web/favicon.png
+          cp branding/web/icons/Icon-192.png web/icons/Icon-192.png
+          cp branding/web/icons/Icon-512.png web/icons/Icon-512.png
+          cp branding/web/icons/Icon-maskable-192.png web/icons/Icon-maskable-192.png
+          cp branding/web/icons/Icon-maskable-512.png web/icons/Icon-maskable-512.png
+
+      - name: Get Flutter packages
+        run: |
+          flutter clean
+          flutter pub get
+
+      - name: Build installable Android APK
+        run: |
+          flutter build apk --debug \
+            --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }} \
+            --dart-define=FIREBASE_ANDROID_APP_ID=${{ secrets.FIREBASE_ANDROID_APP_ID }} \
+            --dart-define=FIREBASE_WEB_APP_ID=${{ secrets.FIREBASE_WEB_APP_ID }} \
+            --dart-define=FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }} \
+            --dart-define=FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }} \
+            --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
+            --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }}
+
+      - name: Show Android plugin registrant
+        if: always()
+        run: |
+          echo "Flutter generated plugin registrants:"
+          find android build -name GeneratedPluginRegistrant.java -print 2>/dev/null || true
+          grep -R "FlutterFirebaseCorePlugin" android build -n 2>/dev/null | head -20 || true
+
+      - name: Give APK a friendly name
+        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.3.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Menai-Muttineers-Academy-V1-3-3-APK
+          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.3.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Build Web App
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          flutter build web --release --base-href "/${REPO_NAME}/" \
+            --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }} \
+            --dart-define=FIREBASE_ANDROID_APP_ID=${{ secrets.FIREBASE_ANDROID_APP_ID }} \
+            --dart-define=FIREBASE_WEB_APP_ID=${{ secrets.FIREBASE_WEB_APP_ID }} \
+            --dart-define=FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }} \
+            --dart-define=FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }} \
+            --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
+            --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }}
+
+      - name: Upload Web build backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: Menai-Muttineers-Academy-V1-3-3-Web
+          path: build/web
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages package
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy-web:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Publish Web App
+        id: deployment
+        uses: actions/deploy-pages@v4
