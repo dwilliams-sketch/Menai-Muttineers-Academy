@@ -24,8 +24,12 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.8'
           channel: stable
           cache: true
+
+      - name: Show Flutter version
+        run: flutter --version
 
       - name: Generate Android and Web platform files
         run: |
@@ -36,19 +40,41 @@ jobs:
           rm -rf platform_template
           python3 - <<'PY'
           from pathlib import Path
+
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text()
           text = text.replace('android:label="academy"', 'android:label="Menai Muttineers Academy"')
           if 'android.permission.INTERNET' not in text:
-              text = text.replace('>\n    <application', '>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <application', 1)
+              text = text.replace(
+                  '>\n    <application',
+                  '>\n'
+                  '    <uses-permission android:name="android.permission.INTERNET"/>\n'
+                  '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n'
+                  '    <uses-permission android:name="android.permission.VIBRATE"/>\n'
+                  '    <application',
+                  1,
+              )
           manifest.write_text(text)
 
+          gradle = Path('android/app/build.gradle.kts')
+          if gradle.exists():
+              g = gradle.read_text()
+              g = g.replace('minSdk = flutter.minSdkVersion', 'minSdk = 23')
+              gradle.write_text(g)
+
           index = Path('web/index.html')
-          text = index.read_text().replace('<title>academy</title>', '<title>Menai Muttineers Academy</title>')
+          text = index.read_text().replace(
+              '<title>academy</title>',
+              '<title>Menai Muttineers Academy</title>',
+          )
           index.write_text(text)
 
           m = Path('web/manifest.json')
-          text = m.read_text().replace('"name": "academy"', '"name": "Menai Muttineers Academy"').replace('"short_name": "academy"', '"short_name": "Muttineers Academy"')
+          text = (
+              m.read_text()
+              .replace('"name": "academy"', '"name": "Menai Muttineers Academy"')
+              .replace('"short_name": "academy"', '"short_name": "Muttineers Academy"')
+          )
           m.write_text(text)
           PY
 
@@ -66,7 +92,9 @@ jobs:
           cp branding/web/icons/Icon-maskable-512.png web/icons/Icon-maskable-512.png
 
       - name: Get Flutter packages
-        run: flutter pub get
+        run: |
+          flutter clean
+          flutter pub get
 
       - name: Build installable Android APK
         run: |
@@ -79,12 +107,23 @@ jobs:
             --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
             --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }}
 
+      - name: Show Android plugin registrant
+        if: always()
+        run: |
+          echo "Flutter generated plugin registrants:"
+          find android build -name GeneratedPluginRegistrant.java -print 2>/dev/null || true
+          grep -R "FlutterFirebaseCorePlugin" android build -n 2>/dev/null | head -20 || true
+
+      - name: Give APK a friendly name
+        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.2.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-APK
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: Menai-Muttineers-Academy-V1-3-2-APK
+          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.2.apk
           if-no-files-found: error
+          retention-days: 7
 
       - name: Build Web App
         env:
@@ -102,9 +141,10 @@ jobs:
       - name: Upload Web build backup
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-Web
+          name: Menai-Muttineers-Academy-V1-3-2-Web
           path: build/web
           if-no-files-found: error
+          retention-days: 7
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
