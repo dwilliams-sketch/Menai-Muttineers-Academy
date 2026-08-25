@@ -236,13 +236,13 @@ jobs:
           grep -R -E "FlutterFirebaseCorePlugin|FlutterFirebaseAuthPlugin" android build -n 2>/dev/null | head -40 || true
 
       - name: Give APK a friendly name
-        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.6.apk
+        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.7.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-3-6-APK
-          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.6.apk
+          name: Menai-Muttineers-Academy-V1-3-7-APK
+          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.7.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -262,7 +262,7 @@ jobs:
       - name: Upload Web build backup
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-3-6-Web
+          name: Menai-Muttineers-Academy-V1-3-7-Web
           path: build/web
           if-no-files-found: error
           retention-days: 7
