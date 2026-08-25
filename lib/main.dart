@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'i18n.dart';
 import 'firebase_options.dart';
@@ -35,6 +37,7 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
   bool _ready = false;
   bool _starting = true;
   String? _error;
+  String? _nativeDiagnostics;
 
   @override
   void initState() {
@@ -58,6 +61,8 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
       debugPrint('Academy language startup warning: $error');
       debugPrintStack(stackTrace: stack);
     }
+
+    _nativeDiagnostics = await _readNativeStartupDiagnostics();
 
     try {
       final options = DefaultFirebaseOptions.currentPlatform;
@@ -99,8 +104,51 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
       if (!mounted) return;
       setState(() {
         _starting = false;
-        _error = _startupErrorText(error);
+        final base = _startupErrorText(error);
+        final native = _nativeDiagnostics?.trim();
+        _error = native == null || native.isEmpty
+            ? base
+            : '$base\n\nAndroid diagnostics:\n$native';
       });
+    }
+  }
+
+  Future<String?> _readNativeStartupDiagnostics() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return null;
+    }
+
+    const channel = MethodChannel('academy/startup_diagnostics');
+
+    try {
+      final result = await channel
+          .invokeMapMethod<String, dynamic>('getStartupDiagnostics')
+          .timeout(const Duration(seconds: 3));
+
+      if (result == null) {
+        return 'MainActivity replied, but no diagnostic data was returned.';
+      }
+
+      final lines = <String>[
+        'MainActivity diagnostic channel: CONNECTED',
+        'Manual Firebase Core registration completed: ${result['manualFirebaseCoreCompleted']}',
+        'Firebase Core listed in engine: ${result['firebaseCoreListed']}',
+        'Generated registrant completed: ${result['generatedRegistrantCompleted']}',
+      ];
+
+      final manualError = result['manualFirebaseCoreError']?.toString();
+      if (manualError != null && manualError.trim().isNotEmpty) {
+        lines.add('Manual Firebase Core error:\n$manualError');
+      }
+
+      final generatedError = result['generatedRegistrantError']?.toString();
+      if (generatedError != null && generatedError.trim().isNotEmpty) {
+        lines.add('Generated registrant error:\n$generatedError');
+      }
+
+      return lines.join('\n');
+    } catch (error) {
+      return 'MainActivity diagnostic channel FAILED: $error';
     }
   }
 
@@ -151,6 +199,12 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Diagnostic build V1.3.4',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 16),
                     if (_starting) ...[
