@@ -319,9 +319,9 @@ exports.deleteAcademyAccount = onCall(async (request) => {
   for (const dogDoc of dogDocs) {
     await deleteQuery(db.collection('staffNotes').where('dogId', '==', dogDoc.id));
     await db.recursiveDelete(dogDoc.ref);
-    await bucket.file(`dogs/${dogDoc.id}.jpg`).delete({ignoreNotFound: true}).catch(() => null);
+    await bucket.file(`dogs/${dogDoc.id}/profile.jpg`).delete({ignoreNotFound: true}).catch(() => null);
   }
-  await bucket.file(`profiles/${targetUid}.jpg`).delete({ignoreNotFound: true}).catch(() => null);
+  await bucket.file(`profiles/${targetUid}/profile.jpg`).delete({ignoreNotFound: true}).catch(() => null);
   await db.recursiveDelete(targetRef);
 
   await db.collection('auditLog').add({
