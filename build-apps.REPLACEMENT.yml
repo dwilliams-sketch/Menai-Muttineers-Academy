@@ -78,6 +78,99 @@ jobs:
           m.write_text(text)
           PY
 
+          # Force Android plugin registration on the FlutterEngine.
+          # The APK contains FlutterFirebaseCorePlugin, but the installed app is
+          # currently reaching Firebase before a native host channel is attached.
+          cat > android/app/src/main/kotlin/com/menaimuttineers/academy/MainActivity.kt <<'KOTLIN'
+          package com.menaimuttineers.academy
+
+          import io.flutter.embedding.android.FlutterActivity
+          import io.flutter.embedding.engine.FlutterEngine
+          import io.flutter.plugin.common.MethodChannel
+          import io.flutter.plugins.GeneratedPluginRegistrant
+          import io.flutter.plugins.firebase.core.FlutterFirebaseCorePlugin
+          import io.flutter.plugins.firebase.auth.FlutterFirebaseAuthPlugin
+
+          class MainActivity : FlutterActivity() {
+              private var manualFirebaseCoreCompleted = false
+              private var manualFirebaseCoreError: String? = null
+              private var firebaseCoreListed = false
+              private var manualFirebaseAuthCompleted = false
+              private var manualFirebaseAuthError: String? = null
+              private var firebaseAuthListed = false
+              private var generatedRegistrantCompleted = false
+              private var generatedRegistrantError: String? = null
+
+              override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+                  // Register Firebase Core FIRST and capture the real Android
+                  // exception if its onAttachedToEngine() fails. Flutter's plugin
+                  // registry stores a plugin before calling onAttachedToEngine(),
+                  // so merely seeing the plugin in GeneratedPluginRegistrant is
+                  // not proof that its Pigeon channels attached successfully.
+                  try {
+                      flutterEngine.plugins.add(FlutterFirebaseCorePlugin())
+                      manualFirebaseCoreCompleted = true
+                  } catch (t: Throwable) {
+                      manualFirebaseCoreError = t.stackTraceToString()
+                  }
+
+                  firebaseCoreListed =
+                      flutterEngine.plugins.has(FlutterFirebaseCorePlugin::class.java)
+
+                  // Register Firebase Auth explicitly as well. The login and
+                  // password-reset Futures are currently waiting forever, which
+                  // is what happens when Auth's Pigeon host channels are absent.
+                  try {
+                      flutterEngine.plugins.add(FlutterFirebaseAuthPlugin())
+                      manualFirebaseAuthCompleted = true
+                  } catch (t: Throwable) {
+                      manualFirebaseAuthError = t.stackTraceToString()
+                  }
+
+                  firebaseAuthListed =
+                      flutterEngine.plugins.has(FlutterFirebaseAuthPlugin::class.java)
+
+                  // Register every other generated plugin. Core/Auth will be
+                  // skipped as already present when their explicit registration worked.
+                  try {
+                      GeneratedPluginRegistrant.registerWith(flutterEngine)
+                      generatedRegistrantCompleted = true
+                  } catch (t: Throwable) {
+                      generatedRegistrantError = t.stackTraceToString()
+                  }
+
+                  MethodChannel(
+                      flutterEngine.dartExecutor.binaryMessenger,
+                      "academy/startup_diagnostics"
+                  ).setMethodCallHandler { call, result ->
+                      if (call.method == "getStartupDiagnostics") {
+                          result.success(
+                              mapOf(
+                                  "manualFirebaseCoreCompleted" to manualFirebaseCoreCompleted,
+                                  "manualFirebaseCoreError" to manualFirebaseCoreError,
+                                  "firebaseCoreListed" to firebaseCoreListed,
+                                  "manualFirebaseAuthCompleted" to manualFirebaseAuthCompleted,
+                                  "manualFirebaseAuthError" to manualFirebaseAuthError,
+                                  "firebaseAuthListed" to firebaseAuthListed,
+                                  "generatedRegistrantCompleted" to generatedRegistrantCompleted,
+                                  "generatedRegistrantError" to generatedRegistrantError
+                              )
+                          )
+                      } else {
+                          result.notImplemented()
+                      }
+                  }
+              }
+          }
+          KOTLIN
+
+      - name: Show Android startup wiring
+        run: |
+          echo "=== MainActivity ==="
+          cat android/app/src/main/kotlin/com/menaimuttineers/academy/MainActivity.kt
+          echo "=== Manifest activity ==="
+          grep -n "MainActivity" android/app/src/main/AndroidManifest.xml || true
+
       - name: Apply Menai Muttineers app icons
         run: |
           cp branding/android/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png
@@ -95,6 +188,34 @@ jobs:
         run: |
           flutter clean
           flutter pub get
+          echo "=== Resolved Firebase Core + Auth compatibility set ==="
+          flutter pub deps --style=compact | grep -E "firebase_core($| )|firebase_core_platform_interface|firebase_core_web|firebase_auth($| )|firebase_auth_platform_interface|firebase_auth_web" || true
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          cfg = json.loads(Path('.dart_tool/package_config.json').read_text())
+          roots = {p['name']: p['rootUri'] for p in cfg['packages']}
+
+          expected = {
+              'firebase_core': 'firebase_core-4.12.1',
+              'firebase_core_platform_interface': 'firebase_core_platform_interface-8.0.0',
+              'firebase_core_web': 'firebase_core_web-3.9.1',
+              'firebase_auth': 'firebase_auth-6.5.6',
+              'firebase_auth_platform_interface': 'firebase_auth_platform_interface-9.0.5',
+              'firebase_auth_web': 'firebase_auth_web-6.2.5',
+          }
+
+          for name, marker in expected.items():
+              root = roots.get(name, '')
+              print(f"{name}: {root}")
+              if marker not in root:
+                  raise SystemExit(
+                      f"Wrong {name} resolved. Expected {marker}, got {root}"
+                  )
+
+          print("Firebase Core + Auth Dart/native compatibility check: PASS")
+          PY
 
       - name: Build installable Android APK
         run: |
@@ -112,16 +233,16 @@ jobs:
         run: |
           echo "Flutter generated plugin registrants:"
           find android build -name GeneratedPluginRegistrant.java -print 2>/dev/null || true
-          grep -R "FlutterFirebaseCorePlugin" android build -n 2>/dev/null | head -20 || true
+          grep -R -E "FlutterFirebaseCorePlugin|FlutterFirebaseAuthPlugin" android build -n 2>/dev/null | head -40 || true
 
       - name: Give APK a friendly name
-        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.2.apk
+        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.7.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-3-2-APK
-          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.2.apk
+          name: Menai-Muttineers-Academy-V1-3-7-APK
+          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.7.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -141,7 +262,7 @@ jobs:
       - name: Upload Web build backup
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-3-2-Web
+          name: Menai-Muttineers-Academy-V1-3-7-Web
           path: build/web
           if-no-files-found: error
           retention-days: 7

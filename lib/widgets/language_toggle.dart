@@ -7,6 +7,8 @@ class LanguageToggle extends StatelessWidget {
   const LanguageToggle({super.key, this.userId});
 
   Future<void> _set(String code) async {
+    // Switch the interface immediately. Firestore persistence happens after;
+    // AuthGate no longer overwrites this with an older snapshot.
     await LanguageController.set(code);
     final uid = userId;
     if (uid != null && uid.isNotEmpty) {

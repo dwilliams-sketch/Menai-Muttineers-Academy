@@ -202,7 +202,7 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Auth bridge fix V1.3.6',
+                      'Settings state fix V1.3.7',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
@@ -319,6 +319,7 @@ class _AuthGateState extends State<AuthGate> {
   final service = FirestoreService();
   final push = PushService();
   String? touchedUid;
+  String? languageSyncedUid;
 
   @override
   Widget build(BuildContext context) {
@@ -327,7 +328,10 @@ class _AuthGateState extends State<AuthGate> {
       builder: (context, authSnap) {
         if (authSnap.connectionState == ConnectionState.waiting) return const Scaffold(body: Center(child: CircularProgressIndicator()));
         final user = authSnap.data;
-        if (user == null) return const AuthScreen();
+        if (user == null) {
+          languageSyncedUid = null;
+          return const AuthScreen();
+        }
         return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           stream: service.userStream(user.uid),
           builder: (context, profileSnap) {
@@ -335,8 +339,14 @@ class _AuthGateState extends State<AuthGate> {
             final doc = profileSnap.data!;
             if (!doc.exists) return MissingProfileScreen(uid: user.uid);
             final profile = AppUser.fromDoc(doc);
-            if (profile.languageCode != LanguageController.current) {
-              Future.microtask(() => LanguageController.set(profile.languageCode));
+            // Apply the saved account language once when this user session loads.
+            // Do not continuously force Firestore's last snapshot back over a
+            // language button the user has just tapped.
+            if (languageSyncedUid != user.uid) {
+              languageSyncedUid = user.uid;
+              if (profile.languageCode != LanguageController.current) {
+                Future.microtask(() => LanguageController.set(profile.languageCode));
+              }
             }
             if (touchedUid != user.uid) {
               touchedUid = user.uid;

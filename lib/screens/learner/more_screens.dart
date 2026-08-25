@@ -67,27 +67,371 @@ class LinksScreen extends StatelessWidget{
   Widget _link(String name,IconData icon,String url)=>Card(child:ListTile(leading:Icon(icon),title:I18nText(name),trailing:Icon(url.isEmpty?Icons.hourglass_empty:Icons.open_in_new),subtitle:url.isEmpty?const I18nText('Link coming soon'):null,onTap:url.isEmpty?null:()=>launch(url)));
 }
 
-class ProfileSettingsScreen extends StatefulWidget{final AppUser profile;final DogProfile dog;const ProfileSettingsScreen({super.key,required this.profile,required this.dog});@override State<ProfileSettingsScreen> createState()=>_ProfileSettingsScreenState();}
-class _ProfileSettingsScreenState extends State<ProfileSettingsScreen>{
-  final service=FirestoreService();final media=MediaService();bool uploading=false;
-  Future<void> _personPhoto(bool enabled)async{setState(()=>uploading=true);try{final url=await media.pickAndUploadProfile(uid:widget.profile.id,enabled:enabled);if(url!=null)await service.updateUserPreferences(widget.profile.id,{'photoUrl':url});}catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:I18nText('Photo upload is not available yet. Admin may need to enable Firebase Storage.')));}finally{if(mounted)setState(()=>uploading=false);}}
-  Future<void> _dogPhoto(bool enabled)async{setState(()=>uploading=true);try{final url=await media.pickAndUploadDog(dogId:widget.dog.id,enabled:enabled);if(url!=null)await service.updateDog(widget.dog.id,{'photoUrl':url});}catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:I18nText('Photo upload is not available yet. Admin may need to enable Firebase Storage.')));}finally{if(mounted)setState(()=>uploading=false);}}
-  @override Widget build(BuildContext context)=>StreamBuilder<DocumentSnapshot<Map<String,dynamic>>>(stream:service.featureSettings(),builder:(context,snap){final photoEnabled=snap.data?.data()?['photoUploadsEnabled']==true;return ListView(padding:const EdgeInsets.all(16),children:[
-    I18nText('Profile Photos',style:Theme.of(context).textTheme.titleLarge),Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[Row(mainAxisAlignment:MainAxisAlignment.spaceEvenly,children:[_photo(widget.profile.photoUrl,Icons.person),_photo(widget.dog.photoUrl,Icons.pets)]),const SizedBox(height:8),Wrap(spacing:8,children:[OutlinedButton.icon(onPressed:uploading?null:()=>_personPhoto(photoEnabled),icon:const Icon(Icons.person),label:const I18nText('My Photo')),OutlinedButton.icon(onPressed:uploading?null:()=>_dogPhoto(photoEnabled),icon:const Icon(Icons.pets),label:I18nText('${widget.dog.name}’s Photo'))]),if(!photoEnabled)const Padding(padding:EdgeInsets.only(top:8),child:I18nText('Photo upload is currently disabled by Admin. This keeps the Academy on the low-cost setup until cloud photo storage is enabled.'))]))),
-    I18nText('Appearance & Sound',style:Theme.of(context).textTheme.titleLarge),
-    SwitchListTile(title:const I18nText('Pirate backgrounds'),subtitle:const I18nText('Light pirate scenes behind the app. Turn off for a plain view.'),value:widget.profile.pirateBackgrounds,onChanged:(v)=>service.updateUserPreferences(widget.profile.id,{'pirateBackgrounds':v})),
-    ListTile(title:const I18nText('Background style'),trailing:DropdownButton<String>(value:widget.profile.backgroundMode,items:const [DropdownMenuItem(value:'rotate',child:I18nText('Change each visit')),DropdownMenuItem(value:'fixed',child:I18nText('My favourite'))],onChanged:(v){if(v!=null)service.updateUserPreferences(widget.profile.id,{'backgroundMode':v});})),
-    if(widget.profile.backgroundMode=='fixed')DropdownButtonFormField<String>(initialValue:widget.profile.backgroundChoice,decoration:const InputDecoration(label: I18nText('Favourite scene')),items:const ['cove','deck','island','parrot','cannon','harbour'].map((e)=>DropdownMenuItem(value:e,child:I18nText(e.toUpperCase()))).toList(),onChanged:(v){if(v!=null)service.updateUserPreferences(widget.profile.id,{'backgroundChoice':v});}),
-    SwitchListTile(title:const I18nText('Background shanty music'),subtitle:const I18nText('Loops between Academy tracks. Off by default.'),value:widget.profile.musicEnabled,onChanged:(v)=>service.updateUserPreferences(widget.profile.id,{'musicEnabled':v})),
-    ListTile(title:const I18nText('Music volume'),subtitle:Slider(value:widget.profile.musicVolume,min:0,max:.7,divisions:14,onChanged:(v)=>service.updateUserPreferences(widget.profile.id,{'musicVolume':v}))),
-    SwitchListTile(title:const I18nText('Trophy celebration sounds'),value:widget.profile.celebrationSound,onChanged:(v)=>service.updateUserPreferences(widget.profile.id,{'celebrationSound':v})),
-    SwitchListTile(title:const I18nText('Reduced animation'),subtitle:const I18nText('Use gentler movement and transitions.'),value:widget.profile.reducedMotion,onChanged:(v)=>service.updateUserPreferences(widget.profile.id,{'reducedMotion':v})),
-    DropdownButtonFormField<String>(initialValue:widget.profile.timerSound,decoration:const InputDecoration(label: I18nText('Training timer sound')),items:const [DropdownMenuItem(value:'parrot',child:I18nText('🦜 Parrot Squawk')),DropdownMenuItem(value:'bell',child:I18nText('🔔 Ship’s Bell')),DropdownMenuItem(value:'cannon',child:I18nText('💥 Tiny Cannon')),DropdownMenuItem(value:'none',child:I18nText('🔇 None'))],onChanged:(v){if(v!=null)service.updateUserPreferences(widget.profile.id,{'timerSound':v});}),
-    const SizedBox(height:16),I18nText('Crew Privacy',style:Theme.of(context).textTheme.titleLarge),SwitchListTile(title:const I18nText('Let other learners find me'),subtitle:const I18nText('They only see your display name and dog name.'),value:widget.profile.discoverable,onChanged:(v)=>service.updateUserPreferences(widget.profile.id,{'discoverable':v})),SwitchListTile(title:const I18nText('Share achievements with my Crew'),value:widget.profile.shareAchievements,onChanged:(v)=>service.updateUserPreferences(widget.profile.id,{'shareAchievements':v})),SwitchListTile(title:const I18nText('Push notifications'),subtitle:const I18nText('Android push works when the Firebase push service is enabled; the in-app bell always works.'),value:widget.profile.pushEnabled,onChanged:(v)=>service.updateUserPreferences(widget.profile.id,{'pushEnabled':v})),
-    const SizedBox(height:16),
-    _AccountClosureCard(profile:widget.profile),
-  ]);});
-  Widget _photo(String url,IconData fallback)=>CircleAvatar(radius:48,backgroundImage:url.startsWith('http')?NetworkImage(url):null,child:url.isEmpty?Icon(fallback,size:40):null);
+class ProfileSettingsScreen extends StatefulWidget {
+  final AppUser profile;
+  final DogProfile dog;
+
+  const ProfileSettingsScreen({
+    super.key,
+    required this.profile,
+    required this.dog,
+  });
+
+  @override
+  State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
+}
+
+class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
+  final service = FirestoreService();
+  final media = MediaService();
+
+  bool uploading = false;
+
+  late bool pirateBackgrounds;
+  late String backgroundMode;
+  late String backgroundChoice;
+  late bool musicEnabled;
+  late double musicVolume;
+  late bool celebrationSound;
+  late bool reducedMotion;
+  late String timerSound;
+  late bool discoverable;
+  late bool shareAchievements;
+  late bool pushEnabled;
+  late String personPhotoUrl;
+  late String dogPhotoUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    pirateBackgrounds = widget.profile.pirateBackgrounds;
+    backgroundMode = widget.profile.backgroundMode;
+    backgroundChoice = widget.profile.backgroundChoice;
+    musicEnabled = widget.profile.musicEnabled;
+    musicVolume = widget.profile.musicVolume.clamp(0.0, .7);
+    celebrationSound = widget.profile.celebrationSound;
+    reducedMotion = widget.profile.reducedMotion;
+    timerSound = widget.profile.timerSound;
+    discoverable = widget.profile.discoverable;
+    shareAchievements = widget.profile.shareAchievements;
+    pushEnabled = widget.profile.pushEnabled;
+    personPhotoUrl = widget.profile.photoUrl;
+    dogPhotoUrl = widget.dog.photoUrl;
+  }
+
+  Future<void> _save(Map<String, dynamic> values) async {
+    try {
+      await service.updateUserPreferences(widget.profile.id, values);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: I18nText('Could not save that setting. Please try again. ($e)'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _personPhoto(bool enabled) async {
+    setState(() => uploading = true);
+    try {
+      final url = await media.pickAndUploadProfile(
+        uid: widget.profile.id,
+        enabled: enabled,
+      );
+      if (url != null) {
+        await service.updateUserPreferences(widget.profile.id, {'photoUrl': url});
+        if (mounted) setState(() => personPhotoUrl = url);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: I18nText(
+              'Photo upload is not available yet. Admin may need to enable Firebase Storage.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => uploading = false);
+    }
+  }
+
+  Future<void> _dogPhoto(bool enabled) async {
+    setState(() => uploading = true);
+    try {
+      final url = await media.pickAndUploadDog(
+        dogId: widget.dog.id,
+        enabled: enabled,
+      );
+      if (url != null) {
+        await service.updateDog(widget.dog.id, {'photoUrl': url});
+        if (mounted) setState(() => dogPhotoUrl = url);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: I18nText(
+              'Photo upload is not available yet. Admin may need to enable Firebase Storage.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => uploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: service.featureSettings(),
+        builder: (context, snap) {
+          final photoEnabled =
+              snap.data?.data()?['photoUploadsEnabled'] == true;
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              I18nText(
+                'Profile Photos',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _photo(personPhotoUrl, Icons.person),
+                          _photo(dogPhotoUrl, Icons.pets),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed:
+                                uploading ? null : () => _personPhoto(photoEnabled),
+                            icon: const Icon(Icons.person),
+                            label: const I18nText('My Photo'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed:
+                                uploading ? null : () => _dogPhoto(photoEnabled),
+                            icon: const Icon(Icons.pets),
+                            label: I18nText('${widget.dog.name}’s Photo'),
+                          ),
+                        ],
+                      ),
+                      if (!photoEnabled)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 8),
+                          child: I18nText(
+                            'Photo upload is currently disabled by Admin. This keeps the Academy on the low-cost setup until cloud photo storage is enabled.',
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              I18nText(
+                'Appearance & Sound',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+
+              SwitchListTile(
+                title: const I18nText('Pirate backgrounds'),
+                subtitle: const I18nText(
+                  'Light pirate scenes behind the app. Turn off for a plain view.',
+                ),
+                value: pirateBackgrounds,
+                onChanged: (v) {
+                  setState(() => pirateBackgrounds = v);
+                  _save({'pirateBackgrounds': v});
+                },
+              ),
+
+              ListTile(
+                title: const I18nText('Background style'),
+                trailing: DropdownButton<String>(
+                  value: backgroundMode,
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'rotate',
+                      child: I18nText('Change each visit'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'fixed',
+                      child: I18nText('My favourite'),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    if (v == null) return;
+                    setState(() => backgroundMode = v);
+                    _save({'backgroundMode': v});
+                  },
+                ),
+              ),
+
+              if (backgroundMode == 'fixed')
+                DropdownButtonFormField<String>(
+                  value: backgroundChoice,
+                  decoration:
+                      const InputDecoration(label: I18nText('Favourite scene')),
+                  items: const [
+                    'cove',
+                    'deck',
+                    'island',
+                    'parrot',
+                    'cannon',
+                    'harbour'
+                  ]
+                      .map(
+                        (e) => DropdownMenuItem(
+                          value: e,
+                          child: I18nText(e.toUpperCase()),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    if (v == null) return;
+                    setState(() => backgroundChoice = v);
+                    _save({'backgroundChoice': v});
+                  },
+                ),
+
+              SwitchListTile(
+                title: const I18nText('Background shanty music'),
+                subtitle: const I18nText(
+                  'Loops between Academy tracks. Off by default.',
+                ),
+                value: musicEnabled,
+                onChanged: (v) {
+                  setState(() => musicEnabled = v);
+                  _save({'musicEnabled': v});
+                },
+              ),
+
+              ListTile(
+                title: const I18nText('Music volume'),
+                subtitle: Slider(
+                  value: musicVolume,
+                  min: 0,
+                  max: .7,
+                  divisions: 14,
+                  label: '${(musicVolume * 100).round()}%',
+                  onChanged: (v) => setState(() => musicVolume = v),
+                  onChangeEnd: (v) => _save({'musicVolume': v}),
+                ),
+              ),
+
+              SwitchListTile(
+                title: const I18nText('Trophy celebration sounds'),
+                value: celebrationSound,
+                onChanged: (v) {
+                  setState(() => celebrationSound = v);
+                  _save({'celebrationSound': v});
+                },
+              ),
+
+              SwitchListTile(
+                title: const I18nText('Reduced animation'),
+                subtitle: const I18nText(
+                  'Use gentler movement and transitions.',
+                ),
+                value: reducedMotion,
+                onChanged: (v) {
+                  setState(() => reducedMotion = v);
+                  _save({'reducedMotion': v});
+                },
+              ),
+
+              DropdownButtonFormField<String>(
+                value: timerSound,
+                decoration:
+                    const InputDecoration(label: I18nText('Training timer sound')),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'parrot',
+                    child: I18nText('🦜 Parrot Squawk'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'bell',
+                    child: I18nText('🔔 Ship’s Bell'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'cannon',
+                    child: I18nText('💥 Tiny Cannon'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'none',
+                    child: I18nText('🔇 None'),
+                  ),
+                ],
+                onChanged: (v) {
+                  if (v == null) return;
+                  setState(() => timerSound = v);
+                  _save({'timerSound': v});
+                },
+              ),
+
+              const SizedBox(height: 16),
+              I18nText(
+                'Crew Privacy',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+
+              SwitchListTile(
+                title: const I18nText('Let other learners find me'),
+                subtitle: const I18nText(
+                  'They only see your display name and dog name.',
+                ),
+                value: discoverable,
+                onChanged: (v) {
+                  setState(() => discoverable = v);
+                  _save({'discoverable': v});
+                },
+              ),
+
+              SwitchListTile(
+                title: const I18nText('Share achievements with my Crew'),
+                value: shareAchievements,
+                onChanged: (v) {
+                  setState(() => shareAchievements = v);
+                  _save({'shareAchievements': v});
+                },
+              ),
+
+              SwitchListTile(
+                title: const I18nText('Push notifications'),
+                subtitle: const I18nText(
+                  'Android push works when the Firebase push service is enabled; the in-app bell always works.',
+                ),
+                value: pushEnabled,
+                onChanged: (v) {
+                  setState(() => pushEnabled = v);
+                  _save({'pushEnabled': v});
+                },
+              ),
+
+              const SizedBox(height: 16),
+              _AccountClosureCard(profile: widget.profile),
+            ],
+          );
+        },
+      );
+
+  Widget _photo(String url, IconData fallback) => CircleAvatar(
+        radius: 48,
+        backgroundImage: url.startsWith('http') ? NetworkImage(url) : null,
+        child: url.isEmpty ? Icon(fallback, size: 40) : null,
+      );
 }
 
 
