@@ -168,6 +168,31 @@ jobs:
         run: |
           flutter clean
           flutter pub get
+          echo "=== Resolved Firebase Core compatibility set ==="
+          flutter pub deps --style=compact | grep -E "firebase_core($| )|firebase_core_platform_interface|firebase_core_web" || true
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          cfg = json.loads(Path('.dart_tool/package_config.json').read_text())
+          roots = {p['name']: p['rootUri'] for p in cfg['packages']}
+
+          expected = {
+              'firebase_core': 'firebase_core-4.12.1',
+              'firebase_core_platform_interface': 'firebase_core_platform_interface-8.0.0',
+              'firebase_core_web': 'firebase_core_web-3.9.1',
+          }
+
+          for name, marker in expected.items():
+              root = roots.get(name, '')
+              print(f"{name}: {root}")
+              if marker not in root:
+                  raise SystemExit(
+                      f"Wrong {name} resolved. Expected {marker}, got {root}"
+                  )
+
+          print("Firebase Core Dart/native compatibility check: PASS")
+          PY
 
       - name: Build installable Android APK
         run: |
@@ -188,13 +213,13 @@ jobs:
           grep -R "FlutterFirebaseCorePlugin" android build -n 2>/dev/null | head -20 || true
 
       - name: Give APK a friendly name
-        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.4.apk
+        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.5.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-3-4-APK
-          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.4.apk
+          name: Menai-Muttineers-Academy-V1-3-5-APK
+          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.5.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -214,7 +239,7 @@ jobs:
       - name: Upload Web build backup
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-3-4-Web
+          name: Menai-Muttineers-Academy-V1-3-5-Web
           path: build/web
           if-no-files-found: error
           retention-days: 7
