@@ -202,7 +202,7 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Diagnostic build V1.3.4',
+                      'Compatibility fix V1.3.5',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
