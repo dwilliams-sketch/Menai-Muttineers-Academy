@@ -86,17 +86,70 @@ jobs:
 
           import io.flutter.embedding.android.FlutterActivity
           import io.flutter.embedding.engine.FlutterEngine
+          import io.flutter.plugin.common.MethodChannel
           import io.flutter.plugins.GeneratedPluginRegistrant
+          import io.flutter.plugins.firebase.core.FlutterFirebaseCorePlugin
 
           class MainActivity : FlutterActivity() {
+              private var manualFirebaseCoreCompleted = false
+              private var manualFirebaseCoreError: String? = null
+              private var firebaseCoreListed = false
+              private var generatedRegistrantCompleted = false
+              private var generatedRegistrantError: String? = null
+
               override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-                  // Do not call super here: FlutterActivity's default implementation
-                  // performs automatic registration. We register the generated list
-                  // explicitly so it is guaranteed to be attached to this engine.
-                  GeneratedPluginRegistrant.registerWith(flutterEngine)
+                  // Register Firebase Core FIRST and capture the real Android
+                  // exception if its onAttachedToEngine() fails. Flutter's plugin
+                  // registry stores a plugin before calling onAttachedToEngine(),
+                  // so merely seeing the plugin in GeneratedPluginRegistrant is
+                  // not proof that its Pigeon channels attached successfully.
+                  try {
+                      flutterEngine.plugins.add(FlutterFirebaseCorePlugin())
+                      manualFirebaseCoreCompleted = true
+                  } catch (t: Throwable) {
+                      manualFirebaseCoreError = t.stackTraceToString()
+                  }
+
+                  firebaseCoreListed =
+                      flutterEngine.plugins.has(FlutterFirebaseCorePlugin::class.java)
+
+                  // Register every other generated plugin. Firebase Core will be
+                  // skipped as already present if the first registration completed.
+                  try {
+                      GeneratedPluginRegistrant.registerWith(flutterEngine)
+                      generatedRegistrantCompleted = true
+                  } catch (t: Throwable) {
+                      generatedRegistrantError = t.stackTraceToString()
+                  }
+
+                  MethodChannel(
+                      flutterEngine.dartExecutor.binaryMessenger,
+                      "academy/startup_diagnostics"
+                  ).setMethodCallHandler { call, result ->
+                      if (call.method == "getStartupDiagnostics") {
+                          result.success(
+                              mapOf(
+                                  "manualFirebaseCoreCompleted" to manualFirebaseCoreCompleted,
+                                  "manualFirebaseCoreError" to manualFirebaseCoreError,
+                                  "firebaseCoreListed" to firebaseCoreListed,
+                                  "generatedRegistrantCompleted" to generatedRegistrantCompleted,
+                                  "generatedRegistrantError" to generatedRegistrantError
+                              )
+                          )
+                      } else {
+                          result.notImplemented()
+                      }
+                  }
               }
           }
           KOTLIN
+
+      - name: Show Android startup wiring
+        run: |
+          echo "=== MainActivity ==="
+          cat android/app/src/main/kotlin/com/menaimuttineers/academy/MainActivity.kt
+          echo "=== Manifest activity ==="
+          grep -n "MainActivity" android/app/src/main/AndroidManifest.xml || true
 
       - name: Apply Menai Muttineers app icons
         run: |
@@ -135,13 +188,13 @@ jobs:
           grep -R "FlutterFirebaseCorePlugin" android build -n 2>/dev/null | head -20 || true
 
       - name: Give APK a friendly name
-        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.3.apk
+        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.4.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-3-3-APK
-          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.3.apk
+          name: Menai-Muttineers-Academy-V1-3-4-APK
+          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.4.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -161,7 +214,7 @@ jobs:
       - name: Upload Web build backup
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-3-3-Web
+          name: Menai-Muttineers-Academy-V1-3-4-Web
           path: build/web
           if-no-files-found: error
           retention-days: 7
