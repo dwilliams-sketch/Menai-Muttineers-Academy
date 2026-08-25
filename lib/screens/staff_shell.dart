@@ -633,7 +633,61 @@ class _StaffControlState extends State<StaffControl>{final service=FirestoreServ
 class LearnerPreviewScreen extends StatefulWidget{const LearnerPreviewScreen({super.key});@override State<LearnerPreviewScreen> createState()=>_LearnerPreviewScreenState();}
 class _LearnerPreviewScreenState extends State<LearnerPreviewScreen>{String state='active';@override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const I18nText('🧪 Learner Preview Mode')),body:ListView(padding:const EdgeInsets.all(16),children:[Card(color:Colors.amber.shade100,child:const Padding(padding:EdgeInsets.all(12),child:I18nText('TEST DECK — this is a safe preview. It does not change your staff permissions or real learner data.'))),DropdownButtonFormField<String>(initialValue:state,items:['new / awaiting payment','active','paused','renewal due','graduated'].map((e)=>DropdownMenuItem(value:e.split(' / ').first.replaceAll(' ','_'),child:I18nText(e.toUpperCase()))).toList(),onChanged:(v)=>setState(()=>state=v??state),decoration:const InputDecoration(label: I18nText('Preview state'))),const SizedBox(height:12),Card(child:Padding(padding:const EdgeInsets.all(20),child:Column(children:[const Icon(Icons.sailing,size:60),I18nText('Ahoy Test Learner & Test Dog!',style:Theme.of(context).textTheme.headlineSmall),const SizedBox(height:8),I18nText(state=='paused'?'⚓ Test Dog’s adventure is currently anchored.':state=='active'?'🏴‍☠️ Your next mission is Focus & Engagement — Lesson 3.':state=='graduated'?'🏆 READY TO JOIN THE CREW — Pre-Flyball Skills completed!':'🔒 Academy access is waiting for the next step.',textAlign:TextAlign.center),const SizedBox(height:12),if(state=='paused')...const [FilledButton(onPressed:null,child:I18nText('RESTART ADVENTURE')),OutlinedButton(onPressed:null,child:I18nText('REQUEST A 1-to-1'))]else if(state=='active')const LinearProgressIndicator(value:.42)])))]));}
 
-class RoleManager extends StatelessWidget{final AppUser profile;RoleManager({super.key,required this.profile});final service=FirestoreService();@override Widget build(BuildContext context)=>ExpansionTile(leading:const Icon(Icons.manage_accounts),title:const I18nText('Manage Crew & Staff'),children:[StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(stream:service.allUsers(),builder:(context,snap){final docs=snap.data?.docs??[];return Column(children:docs.map((d){final m=d.data();final role=(m['role']??'learner').toString();return ListTile(title:I18nText(m['name']??'User'),subtitle:I18nText('${m['email']??''} • ${role.toUpperCase()}'),trailing:DropdownButton<String>(value:['learner','trainer','admin','captain'].contains(role)?role:'learner',items:['learner','trainer','admin','captain'].map((r)=>DropdownMenuItem(value:r,child:I18nText(r.toUpperCase()))).toList(),onChanged:(v){if(v!=null)service.setUserRole(d.id,v,actor:profile.name);});}).toList());})]);}
+class RoleManager extends StatelessWidget {
+  final AppUser profile;
+  RoleManager({super.key, required this.profile});
+  final service = FirestoreService();
+
+  @override
+  Widget build(BuildContext context) => ExpansionTile(
+        leading: const Icon(Icons.manage_accounts),
+        title: const I18nText('Manage Crew & Staff'),
+        children: [
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: service.allUsers(),
+            builder: (context, snap) {
+              final docs = snap.data?.docs ?? [];
+              return Column(
+                children: docs.map((d) {
+                  final m = d.data();
+                  final role = (m['role'] ?? 'learner').toString();
+                  final validRole =
+                      ['learner', 'trainer', 'admin', 'captain'].contains(role)
+                          ? role
+                          : 'learner';
+                  return ListTile(
+                    title: I18nText((m['name'] ?? 'User').toString()),
+                    subtitle: I18nText(
+                      '${m['email'] ?? ''} • ${role.toUpperCase()}',
+                    ),
+                    trailing: DropdownButton<String>(
+                      value: validRole,
+                      items: ['learner', 'trainer', 'admin', 'captain']
+                          .map(
+                            (r) => DropdownMenuItem<String>(
+                              value: r,
+                              child: I18nText(r.toUpperCase()),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          service.setUserRole(
+                            d.id,
+                            v,
+                            actor: profile.name,
+                          );
+                        }
+                      },
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      );
+}
 
 class AccountSettings extends StatelessWidget{final AppUser profile;AccountSettings({super.key,required this.profile});final service=FirestoreService();@override Widget build(BuildContext context)=>ExpansionTile(leading:const Icon(Icons.account_balance_wallet),title:const I18nText('Legacy / initial access'),subtitle:const I18nText('Issue the first activation code for brand-new learners.'),children:[StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(stream:service.allUsers(),builder:(context,snap){final docs=(snap.data?.docs??[]).where((d)=>d.data()['role']=='learner'&&d.data()['activated']!=true).toList();return Column(children:docs.map((d){final m=d.data();return ListTile(title:I18nText(m['name']??'Learner'),subtitle:I18nText('Payment: ${(m['paymentStatus']??'unpaid').toString().toUpperCase()}'),trailing:FilledButton(onPressed:()async{final code=await service.markPaid(d.id);if(context.mounted)showDialog(context:context,builder:(ctx)=>AlertDialog(title:const I18nText('Activation code'),content:SelectableText(code,style:Theme.of(context).textTheme.headlineMedium),actions:[FilledButton(onPressed:()=>Navigator.pop(ctx),child:const I18nText('Done'))]));},child:const I18nText('CONFIRM + CODE')));}).toList());})]);}
 

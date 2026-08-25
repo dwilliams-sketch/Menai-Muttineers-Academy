@@ -1,5 +1,13 @@
 # Changelog
 
+## V1.3 build 7 — compile fix
+- Fixed missing closing parentheses in the learner app shell.
+- Fixed the Weekly Crew Catch-Up card nesting.
+- Fixed the Manage Crew & Staff role selector nesting.
+- Updated Flutter page-transition configuration for current Flutter stable.
+- No Firebase or Firestore changes are required for this compile fix.
+
+
 ## V1.3.0 — The Super-App Update
 
 ### English / Welsh bilingual Academy

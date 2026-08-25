@@ -51,7 +51,34 @@ class _LearnerShellState extends State<LearnerShell>{
         backgroundColor:Colors.transparent,
         appBar:AppBar(
           backgroundColor:Theme.of(context).colorScheme.surface.withValues(alpha:.90),
-          title:dogs.length==1?I18nText('${dog.name} • Academy'):DropdownButtonHideUnderline(child:DropdownButton<String>(value:dog.id,items:dogs.map((d)=>DropdownMenuItem(value:d.id,child:Row(mainAxisSize:MainAxisSize.min,children:[Icon(d.effectiveStatus(widget.profile)=='active'?Icons.pets:Icons.anchor,size:18),const SizedBox(width:7),I18nText(d.name)]))).toList(),onChanged:(v)=>setState(()=>selectedDogId=v)),
+          title: dogs.length == 1
+              ? I18nText('${dog.name} • Academy')
+              : DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: dog.id,
+                    items: dogs
+                        .map(
+                          (d) => DropdownMenuItem(
+                            value: d.id,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  d.effectiveStatus(widget.profile) == 'active'
+                                      ? Icons.pets
+                                      : Icons.anchor,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 7),
+                                I18nText(d.name),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => selectedDogId = v),
+                  ),
+                ),
           actions:[LanguageToggle(userId: widget.profile.id), NotificationBell(profile:widget.profile),PopupMenuButton<String>(onSelected:(v){if(v=='skip')music.skip();if(v=='logout')FirebaseAuth.instance.signOut();},itemBuilder:(_)=>[if(widget.profile.musicEnabled)const PopupMenuItem(value:'skip',child:I18nText('♪ Skip music track')),const PopupMenuItem(value:'logout',child:I18nText('Sign out'))])],
         ),
         body:AnimatedSwitcher(duration:widget.profile.reducedMotion?Duration.zero:const Duration(milliseconds:260),child:KeyedSubtree(key:ValueKey('${index}_${dog.id}_${status}'),child:pages[index])),
@@ -74,7 +101,55 @@ class LearnerHome extends StatelessWidget{
     I18nText('Ahoy ${profile.name} & ${dog.name}!',style:Theme.of(context).textTheme.headlineSmall),const I18nText('Welcome to your Home Deck.'),const SizedBox(height:10),
     StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(stream:service.notificationsForUser(profile.id),builder:(context,n){final unread=(n.data?.docs??[]).where((d)=>d.data()['read']!=true).length;return unread>0?Card(color:Theme.of(context).colorScheme.secondaryContainer,child:ListTile(leading:const Icon(Icons.notifications_active),title:I18nText('$unread new message${unread==1?'':'s'} aboard'),subtitle:const I18nText('Tap the bell at the top to open your postbox.'))):const SizedBox.shrink();}),
     StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(stream:service.trophiesForDog(dog.id),builder:(context,snap){final docs=snap.data?.docs??[];final skills=docs.where((d)=>courseModules.any((m)=>m.id==d.id)).length;final progress=(skills/courseModules.length).clamp(0.0,1.0);return Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Row(children:[Expanded(child:I18nText('Your Academy Voyage',style:Theme.of(context).textTheme.titleLarge)),I18nText('${(progress*100).round()}%')]),const SizedBox(height:8),LinearProgressIndicator(value:progress),const SizedBox(height:5),I18nText('$skills of ${courseModules.length} Key Skills trainer verified'),const SizedBox(height:10),FilledButton.icon(onPressed:onGoTraining,icon:const Icon(Icons.sailing),label:const I18nText('CONTINUE ADVENTURE'))])));}),
-    StreamBuilder<DocumentSnapshot<Map<String,dynamic>>>(stream:service.settings(),builder:(context,s){final m=s.data?.data()??{};final welcome=(m['welcomeMessage']??'').toString();final when=(m['meetWhen']??'').toString();final topic=(m['meetTopic']??'').toString();final url=(m['meetUrl']??'').toString();return Column(children:[if(welcome.isNotEmpty)Card(child:ListTile(leading:const Icon(Icons.campaign),title:const I18nText('Captain’s Message'),subtitle:I18nText(welcome))),if(when.isNotEmpty||topic.isNotEmpty)Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[I18nText('Weekly Crew Catch-Up',style:Theme.of(context).textTheme.titleLarge),if(when.isNotEmpty)I18nText(when),if(topic.isNotEmpty)I18nText('This week: $topic'),if(url.isNotEmpty)Padding(padding:const EdgeInsets.only(top:8),child:FilledButton.icon(onPressed:()=>launch(url),icon:const Icon(Icons.video_call),label:const I18nText('JOIN GOOGLE MEET')))]))]);}),
+    StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: service.settings(),
+      builder: (context, s) {
+        final m = s.data?.data() ?? {};
+        final welcome = (m['welcomeMessage'] ?? '').toString();
+        final when = (m['meetWhen'] ?? '').toString();
+        final topic = (m['meetTopic'] ?? '').toString();
+        final url = (m['meetUrl'] ?? '').toString();
+
+        return Column(
+          children: [
+            if (welcome.isNotEmpty)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.campaign),
+                  title: const I18nText('Captain’s Message'),
+                  subtitle: I18nText(welcome),
+                ),
+              ),
+            if (when.isNotEmpty || topic.isNotEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      I18nText(
+                        'Weekly Crew Catch-Up',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      if (when.isNotEmpty) I18nText(when),
+                      if (topic.isNotEmpty) I18nText('This week: $topic'),
+                      if (url.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: FilledButton.icon(
+                            onPressed: () => launch(url),
+                            icon: const Icon(Icons.video_call),
+                            label: const I18nText('JOIN GOOGLE MEET'),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    ),
     StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(stream:service.notices(),builder:(context,snap){final docs=[...(snap.data?.docs??[])]..sort((a,b)=>((b.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch??0).compareTo((a.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch??0));if(docs.isEmpty)return const SizedBox.shrink();return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[I18nText('Notices',style:Theme.of(context).textTheme.titleLarge),...docs.take(3).map((d){final m=d.data();final cy=LanguageController.current=='cy';final noticeTitle=(cy?(m['titleCy']??m['title']):(m['titleEn']??m['title'])).toString();final noticeMessage=(cy?(m['messageCy']??m['message']):(m['messageEn']??m['message'])).toString();return Card(child:ListTile(leading:Icon((m['priority']??'')=='important'?Icons.priority_high:Icons.info_outline),title:Text(noticeTitle),subtitle:Text(noticeMessage)));})]);}),
     _QuickStats(profile:profile,dog:dog),
   ]);

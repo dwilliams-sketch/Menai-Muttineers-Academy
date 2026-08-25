@@ -45,12 +45,12 @@ class AcademyApp extends StatelessWidget {
         useMaterial3: true,
         cardTheme: const CardThemeData(margin: EdgeInsets.symmetric(vertical: 6), elevation: 0.8),
         inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
-        pageTransitionsTheme: const PageTransitionsTheme(builders: {
-          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+        pageTransitionsTheme: PageTransitionsTheme(builders: {
+          TargetPlatform.android: const FadeForwardsPageTransitionsBuilder(),
           TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.windows: const FadeForwardsPageTransitionsBuilder(),
           TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.linux: const FadeForwardsPageTransitionsBuilder(),
         }),
       ),
       home: const AuthGate(),
