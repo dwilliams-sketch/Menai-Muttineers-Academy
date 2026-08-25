@@ -1,0 +1,14 @@
+{
+  "name": "menai-muttineers-academy-functions",
+  "description": "Backend helpers for Menai Muttineers Academy V1.3",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.4.0",
+    "firebase-functions": "^6.4.0",
+    "@google-cloud/translate": "^10.0.1"
+  }
+}

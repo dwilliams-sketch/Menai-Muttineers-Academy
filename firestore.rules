@@ -3,114 +3,326 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function self(uid) { return signedIn() && request.auth.uid == uid; }
-    function role() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
-    function staff() { return signedIn() && (role() == 'admin' || role() == 'trainer'); }
+    function userDoc(uid) { return get(/databases/$(database)/documents/users/$(uid)); }
+    function role() { return signedIn() ? userDoc(request.auth.uid).data.role : 'none'; }
+    function trainer() { return signedIn() && role() == 'trainer'; }
     function admin() { return signedIn() && role() == 'admin'; }
+    function captain() { return signedIn() && role() == 'captain'; }
+    function staff() { return trainer() || admin() || captain(); }
+    function accountStaff() { return admin() || captain(); }
     function dogOwner(dogId) {
       return signedIn() && get(/databases/$(database)/documents/dogs/$(dogId)).data.ownerId == request.auth.uid;
     }
-    function automaticTrophyId(trophyId) {
-      return trophyId in ['first_login', 'streak_7', 'streak_14', 'streak_30', 'first_lesson', 'first_assessment']
+    function dogActive(dogId) {
+      let dog = get(/databases/$(database)/documents/dogs/$(dogId)).data;
+      let owner = userDoc(dog.ownerId).data;
+      return dog.ownerId == request.auth.uid && (
+        (dog.academyStatus == 'active' && (dog.accessUntil == null || dog.accessUntil > request.time)) ||
+        ((!('academyStatus' in dog) || dog.academyStatus == '') && owner.activated == true)
+      );
+    }
+    function automaticDogTrophy(trophyId) {
+      return trophyId in ['first_login','streak_7','streak_14','streak_30','first_lesson','first_assessment']
         || trophyId.matches('birthday_[0-9]{4}');
+    }
+    function automaticHandlerTrophy(trophyId) {
+      return trophyId in ['lights_first','rolling_first','rolling_three','rolling_10','rolling_25','rolling_50','rolling_100','too_keen'];
     }
 
     match /users/{uid} {
       allow create: if self(uid) && request.resource.data.role == 'learner';
       allow read: if self(uid) || staff();
-      allow update: if admin() || (
+      allow update: if accountStaff() || (
         self(uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'activated', 'lastActiveAt', 'loginStreak', 'lastLoginDay', 'celebrationSound'
+          'activated','lastActiveAt','loginStreak','lastLoginDay',
+          'celebrationSound','pirateBackgrounds','backgroundMode','backgroundChoice',
+          'musicEnabled','musicVolume','reducedMotion','timerSound','discoverable',
+          'shareAchievements','pushEnabled','photoUrl','languageCode'
         ])
         && request.resource.data.role == resource.data.role
         && request.resource.data.paymentStatus == resource.data.paymentStatus
         && request.resource.data.accessCodeHash == resource.data.accessCodeHash
-        && (!request.resource.data.activated || resource.data.paymentStatus in ['paid', 'complimentary'])
+        && request.resource.data.academyCredit == resource.data.academyCredit
+        && (!request.resource.data.activated || resource.data.paymentStatus in ['paid','complimentary'])
       );
-      allow delete: if admin();
+      allow delete: if captain();
+
+      match /ledger/{entryId} {
+        allow read: if self(uid) || accountStaff();
+        allow create: if accountStaff();
+        allow update, delete: if false;
+      }
+
+      match /devices/{deviceId} {
+        allow read: if self(uid) || accountStaff();
+        allow create, update, delete: if self(uid);
+      }
+
+      match /handlerTrophies/{trophyId} {
+        allow read: if self(uid) || staff();
+        allow create: if staff() || (
+          self(uid) && automaticHandlerTrophy(trophyId)
+          && request.resource.data.accepted == false
+        );
+        allow update: if staff() || (
+          self(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accepted','acceptedAt'])
+          && request.resource.data.accepted == true
+        );
+        allow delete: if captain();
+      }
     }
 
     match /dogs/{dogId} {
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.academyStatus == 'awaiting';
       allow read: if signedIn() && (resource.data.ownerId == request.auth.uid || staff());
-      allow update: if signedIn() && (resource.data.ownerId == request.auth.uid || staff());
-      allow delete: if admin();
+      allow update: if accountStaff() || (
+        trainer() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['watchList'])
+      ) || (
+        signedIn() && resource.data.ownerId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name','breed','ageText','dateOfBirth','dobEstimated','experience','notes','photoUrl','pauseRequested',
+          'academyStatus','activatedAt','accessUntil'
+        ])
+        && (
+          request.resource.data.academyStatus == resource.data.academyStatus
+          || (
+            resource.data.academyStatus == 'awaiting'
+            && request.resource.data.academyStatus == 'active'
+            && userDoc(request.auth.uid).data.paymentStatus in ['paid','complimentary']
+            && request.resource.data.accessUntil > request.time
+            && request.resource.data.accessUntil < request.time + duration.value(366, 'd')
+          )
+        )
+      );
+      allow delete: if captain();
 
       match /trophies/{trophyId} {
         allow read: if dogOwner(dogId) || staff();
         allow create: if staff() || (
-          dogOwner(dogId)
-          && automaticTrophyId(trophyId)
+          dogOwner(dogId) && dogActive(dogId)
+          && automaticDogTrophy(trophyId)
           && request.resource.data.automatic == true
           && request.resource.data.accepted == false
         );
         allow update: if staff() || (
           dogOwner(dogId)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accepted', 'acceptedAt'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accepted','acceptedAt'])
           && request.resource.data.accepted == true
         );
-        allow delete: if admin();
+        allow delete: if captain();
       }
 
       match /skillProgress/{moduleId} {
         allow read: if dogOwner(dogId) || staff();
-        allow create, update: if dogOwner(dogId) || staff();
-        allow delete: if admin();
+        allow create, update: if staff() || (dogOwner(dogId) && dogActive(dogId));
+        allow delete: if accountStaff();
       }
     }
 
     match /submissions/{id} {
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && dogActive(request.resource.data.dogId);
       allow read: if signedIn() && (resource.data.userId == request.auth.uid || staff());
       allow update: if staff();
-      allow delete: if admin();
+      allow delete: if accountStaff();
     }
 
     match /questions/{id} {
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
       allow read: if signedIn() && (resource.data.userId == request.auth.uid || staff());
       allow update: if staff();
-      allow delete: if admin();
+      allow delete: if accountStaff();
     }
 
     match /trainingLogs/{id} {
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && dogActive(request.resource.data.dogId);
       allow read: if signedIn() && (resource.data.userId == request.auth.uid || staff());
-      allow delete: if signedIn() && (resource.data.userId == request.auth.uid || admin());
       allow update: if false;
+      allow delete: if accountStaff() || (signedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /lessonHelp/{threadId} {
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && dogActive(request.resource.data.dogId);
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || staff());
+      allow update: if staff() || (
+        signedIn() && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','lastMessageBy','updatedAt'])
+      );
+      allow delete: if accountStaff();
+
+      match /messages/{messageId} {
+        function thread() { return get(/databases/$(database)/documents/lessonHelp/$(threadId)); }
+        allow read: if signedIn() && (thread().data.userId == request.auth.uid || staff());
+        allow create: if signedIn() && (thread().data.userId == request.auth.uid || staff());
+        allow update, delete: if false;
+      }
     }
 
     match /oneToOneRequests/{id} {
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && dogOwner(request.resource.data.dogId);
       allow read: if signedIn() && (resource.data.userId == request.auth.uid || staff());
       allow update: if staff() || (
-        signedIn()
-        && resource.data.userId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
-        && request.resource.data.status in ['booked', 'cancelled']
+        signedIn() && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+        && request.resource.data.status in ['booked','cancelled']
       );
-      allow delete: if admin();
+      allow delete: if accountStaff();
+    }
+
+    match /notifications/{id} {
+      // Learners may create their own notifications or staff-targeted alerts. They cannot create notifications for other learners.
+      allow create: if signedIn() && (
+        request.resource.data.userId == request.auth.uid
+        || userDoc(request.resource.data.userId).data.role in ['trainer','admin','captain']
+      );
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || staff());
+      allow update: if signedIn() && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if accountStaff() || (signedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /paymentRequests/{id} {
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || accountStaff());
+      allow update: if accountStaff();
+      allow delete: if accountStaff();
+    }
+
+    match /restartRequests/{id} {
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || accountStaff());
+      allow update, delete: if accountStaff();
     }
 
     match /merchInterest/{uid} {
       allow create, update: if self(uid) && request.resource.data.userId == request.auth.uid;
       allow read: if self(uid) || staff();
-      allow delete: if admin();
+      allow delete: if accountStaff();
+    }
+
+    match /crewProfiles/{uid} {
+      allow read: if signedIn() && (resource.data.discoverable == true || self(uid) || staff());
+      allow create, update: if self(uid) || accountStaff();
+      allow delete: if self(uid) || accountStaff();
+    }
+
+    match /crewRequests/{id} {
+      allow create: if signedIn() && request.resource.data.fromUid == request.auth.uid;
+      allow read: if signedIn() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid || staff());
+      allow update: if signedIn() && (resource.data.toUid == request.auth.uid || accountStaff());
+      allow delete: if accountStaff();
+    }
+
+    match /crewLinks/{id} {
+      allow read: if signedIn() && (request.auth.uid in resource.data.members || staff());
+      allow create: if signedIn() && request.auth.uid in request.resource.data.members;
+      allow update, delete: if accountStaff();
+    }
+
+    match /crewAchievements/{id} {
+      allow read: if signedIn();
+      allow create: if staff() || (signedIn() && request.resource.data.userId == request.auth.uid);
+      allow update, delete: if accountStaff();
+    }
+
+    match /kudos/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.fromUid == request.auth.uid;
+      allow update: if false;
+      allow delete: if accountStaff();
+    }
+
+    match /lightStats/{uid} {
+      allow read: if self(uid) || staff();
+      allow create, update: if self(uid);
+      allow delete: if accountStaff();
+    }
+
+    match /lightAttempts/{id} {
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || staff());
+      allow update: if false;
+      allow delete: if accountStaff();
+    }
+
+    match /feedback/{id} {
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if staff();
+      allow update: if staff();
+      allow delete: if accountStaff();
+    }
+
+    match /staffNotes/{id} {
+      allow read, create, update: if staff();
+      allow delete: if accountStaff();
+    }
+
+    match /captainLog/{id} {
+      allow read, create, update, delete: if accountStaff();
+    }
+
+    match /auditLog/{id} {
+      allow read: if accountStaff();
+      allow create: if accountStaff();
+      allow update, delete: if false;
+    }
+
+    match /accountDeletionRequests/{uid} {
+      allow create: if self(uid) && request.resource.data.userId == request.auth.uid;
+      allow read: if self(uid) || accountStaff();
+      allow update: if accountStaff() || (
+        self(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+        && request.resource.data.status == 'cancelled'
+      );
+      allow delete: if accountStaff();
+    }
+
+    match /savedReplies/{id} {
+      allow read: if staff();
+      allow create, update, delete: if accountStaff();
+    }
+
+    match /staffTasks/{id} {
+      allow read: if staff();
+      allow create, update: if staff();
+      allow delete: if accountStaff();
     }
 
     match /notices/{id} {
       allow read: if signedIn();
-      allow create, update, delete: if admin();
+      allow create, update, delete: if accountStaff();
     }
 
     match /settings/{id} {
       allow read: if signedIn();
-      allow create, update, delete: if admin();
+      allow create, update, delete: if accountStaff();
     }
 
     match /courseModules/{id} {
       allow read: if signedIn();
-      allow create, update, delete: if admin();
+      allow create, update, delete: if accountStaff();
+    }
+
+    match /musicTracks/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if accountStaff();
+    }
+
+    match /calendarEvents/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if accountStaff();
     }
   }
 }

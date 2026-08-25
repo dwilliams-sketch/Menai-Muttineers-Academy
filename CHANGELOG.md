@@ -1,86 +1,124 @@
 # Changelog
 
-## 1.2.2 — Password reset pop-up fix
-- Fixed a Flutter debug crash that could appear when opening/closing the Forgot Password dialog.
-- Removed the temporary TextEditingController from the reset dialog.
-- Password reset continues to use Firebase Authentication securely.
-- No Firestore rules change is required.
+## V1.3.0 — The Super-App Update
 
-# Menai Muttineers Academy — Changelog
+### English / Welsh bilingual Academy
+- Added a permanent **EN | CY** language control across the main signed-in and sign-in experience.
+- Language choice is remembered on the device and saved to the Academy account.
+- Core learner, trainer, Admin and Captain interface text now switches between English and Welsh without signing out.
+- Captain notices support separate English and Welsh versions.
+- Captain/Admin can write a notice in English, press **Translate to Welsh**, review/tweak the translation, preview both languages and then publish.
+- Published notices are shown in the learner's selected language.
+- Learner/trainer questions and conversation messages are deliberately kept exactly as written and are **not** auto-translated.
+- Built-in birthday, bank-holiday and fun-day notifications support English/Welsh delivery.
+- Standard weekend substitute days for New Year, Christmas and Boxing Day bank holidays are included.
 
-## V1.2.1 — Password Reset
+### Welcome & accounts
+- Redesigned opening screen with large **CREATE MY ACCOUNT** and **EXISTING USER — SIGN IN** choices.
+- New registration keeps the learner signed in instead of sending them back through login.
+- Secure Forgot Password flow retained.
+- Added separate `captain` role alongside trainer/admin/learner.
+- Added safe **Preview as Learner** Test Deck without changing staff permissions.
 
-### Login & account recovery
-- Added **Forgot password?** to the sign-in screen.
-- User enters their Academy email address and Firebase sends a secure password-reset email.
-- Passwords remain private; Captain/Admin cannot see or recover a learner’s password.
-- Added clear messages for invalid email, connection problems and too many attempts.
-- Reset instructions remind users to check their junk/spam folder.
-- No Firestore rules change is required for this patch.
+### Per-dog Academy access
+- Each dog now has its own Academy status and paid voyage.
+- Academy price and voyage duration are editable live by Captain/Admin.
+- One user wallet/Academy credit can fund several active dogs.
+- Each active dog draws the configured amount when its own voyage renews.
+- Pause requests take effect after the already-paid voyage finishes.
+- Paused dogs keep all history but official course access, progress, assessment and trophies are locked.
+- Paused dogs can always request a separately charged 1-to-1.
+- **Restart Adventure** allows a paused dog to return using the current configured Academy price.
+- Added ledger/history for credit and access deductions.
+- Existing V1.2 active dogs can be migrated safely from the staff Dog Snapshot.
 
-## V1.2.0 — Training Paths, Trophy Cabinet & Treasure Chest
+### Payments without taking money in the app
+- The Academy does not process cards or bank payments.
+- Captain/Admin can edit bank/account details, standing-order/direct-debit instructions and payment wording without rebuilding.
+- Learner payment reference is generated from dog name + learner initials + an Admin-editable suffix (default `007`).
+- Learner can press **I've Made a Payment**; Admin verifies it externally before adding credit.
 
-### Training course
-- Rebuilt the course around 8 **Key Skills** rather than one video per module.
-- Every Key Skill now contains **5–9 short lessons**.
-- Learners can mark each lesson as **Watched, Practised, Confident or Need Help**.
-- A lesson counts towards assessment readiness once it is **Practised** or **Confident**.
-- The assessment button stays locked until every lesson in that Key Skill is complete.
-- Captain/Admin can add a separate YouTube URL for every lesson from the Admin screen.
-- Existing V1/V1.1 first-module video links are used as a fallback for lesson 1 where possible.
+### Training & support
+- Retains eight Key Skills with 5–9 lesson videos each.
+- Lesson-specific **Need Help** now opens a comment/video conversation attached to the exact dog, skill and lesson.
+- Trainer receives help in the Action Centre and can claim, reply, use saved replies, resolve or set a follow-up.
+- Added trainer Recommend Skill action.
+- 1-to-1 wording, typical price and typical duration are editable in Academy Settings; the actual quote remains per booking.
 
-### Trophy Cabinet
-- Added a full Trophy Cabinet showing future awards from day one.
-- Locked trophies are shown in shadow with **???** until revealed.
-- Each trophy has its own visual motif linked to the achievement.
-- Trainer-passed Key Skills award a skill trophy.
-- New trophies are created as **unopened** until the learner accepts them.
+### Notifications
+- Added in-app notification centre and unread bell.
+- Supplied Firebase backend can send background device push notifications after Functions are deployed.
+- Notifications cover trainer replies, assessments/trophies, 1-to-1 updates, important notices, account events, birthdays and celebrations.
 
-### Trophy celebrations
-- New trophy pop-up appears when an unopened trophy is waiting.
-- Learner presses **Accept Trophy** to reveal it.
-- Acceptance triggers party-popper/confetti animation and a short celebration chime.
-- Celebration sound can be switched off in My Dog settings.
+### Captain's Trophy Cabin
+- Trophy Cabinet presented as a wooden Captain's Cabin display.
+- Locked awards are shadowed with `???`; earned awards become full colour.
+- Trophy reveal/accept celebration with confetti and sound.
+- Added birthday, login and course milestone trophies.
+- Added Start Lights achievement collection including a hidden **Too Keen, Captain!** award.
 
-### Automatic milestone trophies
-- **First Steps Aboard** — first Academy login.
-- **Seven Days Aboard** — 7-day consecutive login streak.
-- **Sea Legs Streak** — 14-day consecutive login streak.
-- **Month on Deck** — 30-day consecutive login streak.
-- **First Lesson Logged** — first lesson practised.
-- **Brave Enough to Be Judged** — first assessment submitted.
-- **First Skill Mastered** — first trainer-verified skill passed.
-- **Birthday Buccaneer** — awarded on the dog’s birthday each year.
+### Games & Practice
+- Added **Flyball Start Lights** practice game:
+  - random short delay before the sequence;
+  - top / middle / lower red lights one second apart;
+  - green one second later;
+  - STOP can be pressed early or after green;
+  - timing stored to thousandths and displayed to two decimal places;
+  - tiny early attempts can show `-0.00` with an "Aww" sound;
+  - rolling-start celebration for +0.000 to +0.004 seconds;
+  - attempts, rolling starts, streak, early starts, best and average tracked.
+- Start Lights trophies: **Lantern Lubber**, **Rolling Roger**, **Triple Broadside**, **Start Line Scallywag**, **Quickdraw Quartermaster**, **Cannon-Fire Reflexes**, **Master of the Lights**, plus hidden **Too Keen, Captain!**.
+- Added short Training Timer with Parrot Squawk, Ship Bell, Tiny Cannon or silent end alarm and optional diary save.
 
-### Dog profiles
-- Added dog date of birth.
-- Owners can mark the date as an estimate — a best guess is fine.
-- Date of birth is used for birthday celebrations.
+### Crew & Kudos
+- Opt-in Crew discovery using learner display name + dog name only.
+- Friend requests and Crew links.
+- Positive achievement feed and preset Kudos reactions.
+- Learners control discoverability and achievement sharing.
 
-### Treasure Chest
-- Added **Menai Muttineers Treasure Chest** merch teaser.
-- Coming-soon items include mugs, pens, bandanas, real trophies, stickers, magnets, keyrings and clothing.
-- Learners can register which products they are interested in.
-- Captain/Admin dashboard shows how many learners have registered merch interest.
+### Appearance & music
+- Added light pirate background scenes with rotate/favourite/off controls and reduced-motion option.
+- Background music is optional and OFF by default.
+- Bundled two **The Gentle Tide** starter tracks which alternate.
+- Captain/Admin can add/disable public MP3 links from the Music Library without rebuilding.
 
-### Captain/Admin
-- Added **Manage Crew & Staff** inside the app.
-- Captain/Admin can change a registered account between Learner, Trainer and Admin without using Firebase manually.
-- Admin course controls now provide a separate YouTube field for every lesson.
-- Learner list now shows login streak and dog date of birth when available.
+### Celebrations
+- Automatic birthday messages and Birthday Buccaneer trophy.
+- Built-in messages for standard England & Wales bank-holiday dates plus St David's Day.
+- Fun dates include National Pet Day, National Rum Day, National Dog Day, Talk Like a Pirate Day and World Animal Day.
+- Captain/Admin can add additional annual custom celebration dates/messages without rebuilding.
 
-### Existing V1 features retained
-- Shared Android APK and web app.
-- Firebase shared data.
-- Manual payment approval and access codes.
-- Learner, Trainer and Captain/Admin roles.
-- Video assessments and trainer feedback.
-- Ask a Trainer.
-- 1-to-1 requests and bookings.
-- Training diary.
-- Captain notices.
-- Weekly Google Meet link.
-- Menai Muttineers branded app/web icons.
+### Links, photos & Treasure Chest
+- Follow & Support page: Facebook, Instagram, TikTok, YouTube, website, Easyfundraising and GoFundMe.
+- Bank/payment details are editable live.
+- Optional compressed member and dog profile photos through Firebase Storage.
+- Menai Muttineers Treasure Chest teaser with merchandise-interest capture.
 
-### Required Firebase change
-V1.2 adds lesson progress, automatic trophies, trophy acceptance, login streaks and merch-interest records. The updated `firestore.rules` file **must be published in Firebase** before learners use V1.2.
+### Staff, reports & management
+- Trainer Desk, Action Centre, Dog Directory and Dog Snapshot.
+- Account/payment actions separated from ordinary trainer permissions.
+- Saved trainer replies, private staff notes, follow-ups, recommendations and claim-work tools.
+- Captain/Admin controls roles, course content, settings, links, music, celebrations, notices and feature switches.
+- Quarterly reporting includes Academy totals, per-skill assessment performance, help-demand trends, engagement and fun stats.
+- Added privacy-safe quarterly social summary.
+- Captain's Log, audit trail and System Health.
+- Added account-closure request workflow: **Set Sail on a New Adventure**.
+- Supplied callable Firebase Function can permanently delete approved learner data and Auth account while anonymising necessary Academy accounting history.
+
+### Backend supplied with V1.3
+- Firebase Functions source for:
+  - background push from Academy notification records;
+  - daily per-dog renewal / pause processing;
+  - automatic built-in/custom celebration messages;
+  - birthday messages and birthday trophies even if the app is not opened;
+  - complete Admin/Captain-approved learner account removal.
+- Firebase Storage security rules for compressed profile/dog photos.
+
+## V1.2.2 — Password reset pop-up fix
+- Fixed Flutter debug error in the Forgot Password dialog.
+
+## V1.2.1 — Password reset
+- Added secure Firebase password reset from the sign-in screen.
+
+## V1.2.0 — Training paths, Trophy Cabinet & Treasure Chest
+- Added structured lessons, video assessments, trainer-awarded trophies, automatic milestones, trophy acceptance/celebrations, dog birthdays and Treasure Chest teaser.

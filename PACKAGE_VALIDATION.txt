@@ -1,0 +1,30 @@
+MENAI MUTTINEERS ACADEMY V1.3 - PACKAGE CHECK
+
+Version: 1.3.0+6
+Target: Android APK + GitHub Pages web app
+
+Included:
+- Flutter application source
+- Android/Web GitHub Actions build workflow
+- Firestore security rules
+- Firebase Storage rules
+- Firebase Functions source
+- English/Welsh interface + EN/CY toggle
+- Captain notice English -> Welsh translation workflow
+- Two bundled Gentle Tide music tracks
+- Pirate timer/celebration sound effects
+- Menai Muttineers branding/icons
+- V1.3 setup guide and test checklist
+
+Static packaging checks:
+- firebase.json: valid JSON
+- functions/package.json: valid JSON
+- Firebase Functions source included (Node syntax checked during packaging)
+- Firestore rules brace count: 90 open / 90 close
+- Crew request rule blocks: 1
+- assets/music/gentle_tide_1.mp3: 2,862,747 bytes; SHA256 bbfde389a0e41b24...
+- assets/music/gentle_tide_2.mp3: 2,535,403 bytes; SHA256 f12e2e1423a37806...
+
+IMPORTANT:
+The first GitHub Actions run is the full Flutter compiler test for V1.3.
+If GitHub gives a red cross, use the first failed step/error to make the next targeted fix.

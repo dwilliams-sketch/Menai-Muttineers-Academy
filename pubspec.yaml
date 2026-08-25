@@ -1,7 +1,7 @@
 name: academy
-description: Menai Muttineers Pre-Flyball Academy - Android and Web V1.2.1
+description: Menai Muttineers Pre-Flyball Academy - Android and Web V1.3
 publish_to: 'none'
-version: 1.2.2+5
+version: 1.3.0+6
 
 environment:
   sdk: '>=3.10.0 <4.0.0'
@@ -9,16 +9,29 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   firebase_core: ^4.13.0
   firebase_auth: ^6.5.7
   cloud_firestore: ^6.8.0
+  firebase_messaging: ^16.5.0
+  firebase_storage: ^13.4.6
+  cloud_functions: ^6.3.6
+  image_picker: ^1.2.3
   crypto: ^3.0.6
   url_launcher: ^6.3.2
   youtube_player_iframe: ^6.0.2
   audioplayers: ^6.8.1
   confetti: ^0.8.0
+  shared_preferences: ^2.5.3
 
 flutter:
   uses-material-design: true
   assets:
     - assets/sounds/trophy_chime.wav
+    - assets/sounds/ship_bell.wav
+    - assets/sounds/parrot_squawk.wav
+    - assets/sounds/tiny_cannon.wav
+    - assets/sounds/aww_chime.wav
+    - assets/music/gentle_tide_1.mp3
+    - assets/music/gentle_tide_2.mp3
