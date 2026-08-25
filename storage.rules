@@ -1,26 +1,59 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    function signedIn() { return request.auth != null; }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
     function role() {
-      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
-    }
-    function staff() { return signedIn() && (role() == 'trainer' || role() == 'admin' || role() == 'captain'); }
-    function accountStaff() { return signedIn() && (role() == 'admin' || role() == 'captain'); }
-
-    match /profiles/{uid}.jpg {
-      allow read: if signedIn();
-      allow write: if signedIn() && (request.auth.uid == uid || accountStaff())
-        && request.resource.size < 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+      return firestore.get(
+        /databases/(default)/documents/users/$(request.auth.uid)
+      ).data.role;
     }
 
-    match /dogs/{dogId}.jpg {
+    function accountStaff() {
+      return signedIn()
+        && (role() == 'admin' || role() == 'captain');
+    }
+
+    match /profiles/{uid}/{fileName} {
       allow read: if signedIn();
-      allow write: if signedIn()
-        && (firestore.get(/databases/(default)/documents/dogs/$(dogId)).data.ownerId == request.auth.uid || accountStaff())
+
+      allow create, update: if signedIn()
+        && fileName == 'profile.jpg'
+        && (request.auth.uid == uid || accountStaff())
         && request.resource.size < 1024 * 1024
         && request.resource.contentType.matches('image/.*');
+
+      allow delete: if signedIn()
+        && fileName == 'profile.jpg'
+        && (request.auth.uid == uid || accountStaff());
+    }
+
+    match /dogs/{dogId}/{fileName} {
+      allow read: if signedIn();
+
+      allow create, update: if signedIn()
+        && fileName == 'profile.jpg'
+        && (
+          firestore.get(
+            /databases/(default)/documents/dogs/$(dogId)
+          ).data.ownerId == request.auth.uid
+          || accountStaff()
+        )
+        && request.resource.size < 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+
+      allow delete: if signedIn()
+        && fileName == 'profile.jpg'
+        && (
+          firestore.get(
+            /databases/(default)/documents/dogs/$(dogId)
+          ).data.ownerId == request.auth.uid
+          || accountStaff()
+        );
     }
   }
 }
