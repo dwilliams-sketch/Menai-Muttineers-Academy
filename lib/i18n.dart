@@ -178,6 +178,14 @@ class I18nText extends StatelessWidget {
 const Map<String, String> _cy = {
   // Core navigation and account flow
   'Menai Muttineers Academy': 'Academi Menai Muttineers',
+  'Academy V1.4': 'Academi V1.4',
+  'Preparing the Academy…': 'Yn paratoi’r Academi…',
+  'This should only take a few seconds.': 'Dylai hyn gymryd ychydig eiliadau yn unig.',
+  'The Academy could not finish starting.': 'Ni allai’r Academi orffen cychwyn.',
+  'Nothing has been deleted. Check your internet connection, then tap Retry.': 'Nid oes dim wedi’i ddileu. Gwiriwch eich cysylltiad rhyngrwyd, yna tapiwch Ailgeisio.',
+  'Startup details': 'Manylion cychwyn',
+  'RETRY': 'AILGEISIO',
+  'Unknown startup error.': 'Gwall cychwyn anhysbys.',
   'Your pre-flyball adventure starts here.': 'Mae eich antur cyn-flyball yn dechrau yma.',
   'New to the Academy?': 'Yn newydd i’r Academi?',
   'CREATE MY ACCOUNT': 'CREU FY NGHYFRIF',

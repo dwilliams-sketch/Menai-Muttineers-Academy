@@ -193,7 +193,7 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
                   children: [
                     const Icon(Icons.anchor, size: 72, color: navy),
                     const SizedBox(height: 18),
-                    Text(
+                    I18nText(
                       'Menai Muttineers Academy',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -201,8 +201,8 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
                           ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'Settings state fix V1.3.7',
+                    const I18nText(
+                      'Academy V1.4',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
@@ -210,12 +210,12 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
                     if (_starting) ...[
                       const CircularProgressIndicator(),
                       const SizedBox(height: 18),
-                      const Text(
+                      const I18nText(
                         'Preparing the Academy…',
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 6),
-                      const Text(
+                      const I18nText(
                         'This should only take a few seconds.',
                         textAlign: TextAlign.center,
                       ),
@@ -226,13 +226,13 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
                         color: Theme.of(context).colorScheme.error,
                       ),
                       const SizedBox(height: 14),
-                      Text(
+                      I18nText(
                         'The Academy could not finish starting.',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      const I18nText(
                         'Nothing has been deleted. Check your internet connection, then tap Retry.',
                         textAlign: TextAlign.center,
                       ),
@@ -243,12 +243,12 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const Text(
+                              const I18nText(
                                 'Startup details',
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 6),
-                              SelectableText(_error ?? 'Unknown startup error.'),
+                              SelectableText(_error ?? tr('Unknown startup error.')),
                             ],
                           ),
                         ),
@@ -257,7 +257,7 @@ class _AcademyBootstrapState extends State<AcademyBootstrap> {
                       FilledButton.icon(
                         onPressed: _startAcademy,
                         icon: const Icon(Icons.refresh),
-                        label: const Text('RETRY'),
+                        label: const I18nText('RETRY'),
                       ),
                     ],
                   ],
