@@ -1,7 +1,7 @@
 name: academy
 description: Menai Muttineers Pre-Flyball Academy - Android and Web V1.4
 publish_to: 'none'
-version: 1.4.0+17
+version: 1.4.2+18
 environment:
   sdk: '>=3.10.0 <4.0.0'
 
