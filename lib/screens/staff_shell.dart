@@ -1431,6 +1431,7 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                       videoUrl.isNotEmpty &&
                       (m['videoSource'] ?? '').toString() == 'academy_upload';
                   final keepForRecords = m['videoArchiveRequested'] == true;
+                  final safelyArchived = m['videoArchived'] == true;
 
                   return Align(
                     alignment: staff
@@ -1493,7 +1494,7 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                                       icon: const Icon(Icons.open_in_new),
                                       label: const I18nText('Open original'),
                                     ),
-                                  if (academyUpload)
+                                  if (academyUpload && !safelyArchived)
                                     TextButton.icon(
                                       onPressed: () =>
                                           service.setHelpVideoArchiveRequested(
@@ -1511,6 +1512,46 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                                             ? 'Kept for records'
                                             : 'Keep for records',
                                       ),
+                                    ),
+                                  if (academyUpload &&
+                                      keepForRecords &&
+                                      !safelyArchived)
+                                    FilledButton.tonalIcon(
+                                      onPressed: () async {
+                                        final archiveUrl =
+                                            await _confirmVideoArchived(
+                                              context,
+                                            );
+
+                                        if (archiveUrl == null) return;
+
+                                        await service.markHelpVideoArchived(
+                                          threadId: widget.threadId,
+                                          messageId: d.id,
+                                          archiveUrl: archiveUrl,
+                                        );
+
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: I18nText(
+                                                'Video marked safely archived.',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      icon: const Icon(Icons.inventory_2),
+                                      label: const I18nText(
+                                        'MARK SAFELY ARCHIVED',
+                                      ),
+                                    ),
+                                  if (safelyArchived)
+                                    const Chip(
+                                      avatar: Icon(Icons.verified, size: 18),
+                                      label: I18nText('Safely archived'),
                                     ),
                                 ],
                               ),
