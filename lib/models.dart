@@ -1,5 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// Academy currency shown to learners. Money is still stored in pounds in Firestore
+// for accounting/backwards compatibility, but the learner experience uses Doubloons.
+const double academyDoubloonPounds = 5.0;
+const int academyDoubloonAccessDays = 30;
+
+double poundsToDoubloons(double pounds) => pounds / academyDoubloonPounds;
+double doubloonsToPounds(double doubloons) => doubloons * academyDoubloonPounds;
+
+String formatDoubloonNumber(double value) {
+  if ((value - value.roundToDouble()).abs() < 0.0001) return value.toInt().toString();
+  return value.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+}
+
+String doubloonBalanceLabel(double pounds) {
+  final count = poundsToDoubloons(pounds);
+  final word = (count - 1).abs() < 0.0001 ? 'Doubloon' : 'Doubloons';
+  return '${formatDoubloonNumber(count)} $word';
+}
+
 DateTime? dateFrom(dynamic value) {
   if (value is Timestamp) return value.toDate();
   if (value is DateTime) return value;

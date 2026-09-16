@@ -187,7 +187,6 @@ class FirestoreService {
   Future<void> touch(String uid) => db.collection('users').doc(uid).update({'lastActiveAt': FieldValue.serverTimestamp()});
 
   Future<void> activate(String uid) async {
-    final config = await getAcademyConfig();
     final dogs = await db.collection('dogs').where('ownerId', isEqualTo: uid).get();
     final batch = db.batch();
     batch.update(db.collection('users').doc(uid), {
@@ -201,7 +200,7 @@ class FirestoreService {
         batch.update(first.reference, {
           'academyStatus': 'active',
           'activatedAt': FieldValue.serverTimestamp(),
-          'accessUntil': Timestamp.fromDate(DateTime.now().add(Duration(days: config.dogPeriodDays))),
+          'accessUntil': Timestamp.fromDate(DateTime.now().add(const Duration(days: academyDoubloonAccessDays))),
           'pauseRequested': false,
         });
       }
@@ -618,18 +617,66 @@ class FirestoreService {
       tx.set(userRef.collection('ledger').doc(), {
         'type': 'credit',
         'amount': amount,
-        'description': note.trim().isEmpty ? 'Academy credit added' : note.trim(),
+        'description': note.trim().isEmpty ? 'Doubloons added' : note.trim(),
         'actor': actor,
         'createdAt': FieldValue.serverTimestamp(),
       });
     });
-    await notifyUser(uid: uid, title: '💰 Academy credit added', body: '£${amount.toStringAsFixed(2)} has been added to your Academy balance.', type: 'account');
-    await _audit('Credit added', uid, '£${amount.toStringAsFixed(2)}', actor);
+    final doubloons = poundsToDoubloons(amount);
+    await notifyUser(
+      uid: uid,
+      title: '🪙 Doubloons added',
+      body: '${formatDoubloonNumber(doubloons)} ${doubloons == 1 ? 'Doubloon has' : 'Doubloons have'} been added to your Academy balance.',
+      type: 'account',
+    );
+    await _audit('Doubloons added', uid, '${formatDoubloonNumber(doubloons)} Doubloons', actor);
+  }
+
+  /// Admin/Captain shortcut for the V1.4 learner currency.
+  /// Firestore continues to store pounds so old balances and accounting stay compatible.
+  Future<bool> adjustAcademyDoubloons({
+    required String uid,
+    required double doubloons,
+    required String actor,
+    String note = '',
+  }) async {
+    if (doubloons == 0) return true;
+    final amount = doubloonsToPounds(doubloons);
+    final userRef = db.collection('users').doc(uid);
+    var changed = false;
+    await db.runTransaction((tx) async {
+      final snap = await tx.get(userRef);
+      final current = (snap.data()?['academyCredit'] as num?)?.toDouble() ?? 0;
+      final next = current + amount;
+      if (next < -0.0001) return;
+      tx.update(userRef, {'academyCredit': next < 0 ? 0.0 : next});
+      tx.set(userRef.collection('ledger').doc(), {
+        'type': amount > 0 ? 'credit' : 'adjustment',
+        'amount': amount,
+        'description': note.trim().isEmpty
+            ? (amount > 0 ? 'Doubloons added by Admin' : 'Doubloons removed by Admin')
+            : note.trim(),
+        'actor': actor,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      changed = true;
+    });
+    if (!changed) return false;
+    final count = formatDoubloonNumber(doubloons.abs());
+    await notifyUser(
+      uid: uid,
+      title: amount > 0 ? '🪙 Doubloons added' : '🪙 Doubloon balance updated',
+      body: amount > 0
+          ? '$count ${doubloons.abs() == 1 ? 'Doubloon has' : 'Doubloons have'} been added to your Academy balance.'
+          : '$count ${doubloons.abs() == 1 ? 'Doubloon has' : 'Doubloons have'} been removed from your Academy balance.',
+      type: 'account',
+    );
+    await _audit('Doubloon balance adjusted', uid, '${doubloons > 0 ? '+' : ''}${formatDoubloonNumber(doubloons)} Doubloons', actor);
+    return true;
   }
 
   Future<bool> activateDogUsingCredit({required String uid, required String dogId, required String actor, double? costOverride}) async {
-    final config = await getAcademyConfig();
-    final cost = costOverride ?? config.dogPeriodCost;
+    final cost = costOverride ?? academyDoubloonPounds;
     final userRef = db.collection('users').doc(uid);
     final dogRef = db.collection('dogs').doc(dogId);
     var success = false;
@@ -643,21 +690,21 @@ class FirestoreService {
         'academyStatus': 'active',
         'pauseRequested': false,
         'activatedAt': FieldValue.serverTimestamp(),
-        'accessUntil': Timestamp.fromDate(DateTime.now().add(Duration(days: config.dogPeriodDays))),
+        'accessUntil': Timestamp.fromDate(DateTime.now().add(const Duration(days: academyDoubloonAccessDays))),
       });
       tx.set(userRef.collection('ledger').doc(), {
         'type': 'debit',
         'amount': -cost,
         'dogId': dogId,
-        'description': '${d.data()?['name'] ?? 'Dog'} — ${config.dogPeriodDays} days Academy access',
+        'description': '${d.data()?['name'] ?? 'Dog'} — 1 Doubloon / $academyDoubloonAccessDays days Academy access',
         'actor': actor,
         'createdAt': FieldValue.serverTimestamp(),
       });
       success = true;
     });
     if (success) {
-      await notifyUser(uid: uid, title: '🏴‍☠️ Adventure started!', body: 'Another ${config.dogPeriodDays} days of Academy access is ready.', type: 'account', targetId: dogId);
-      await _audit('Dog access started', dogId, '${config.priceLabel()} / ${config.dogPeriodDays} days', actor);
+      await notifyUser(uid: uid, title: '🏴‍☠️ Adventure started!', body: '1 Doubloon has opened another $academyDoubloonAccessDays days of Academy access.', type: 'account', targetId: dogId);
+      await _audit('Dog access started', dogId, '1 Doubloon / $academyDoubloonAccessDays days', actor);
     }
     return success;
   }
@@ -728,14 +775,14 @@ class FirestoreService {
         'paymentMethod': 'Manual bank payment',
         'accessCodeHash': hashAccessCode(code),
       });
-      if (amount + 0.0001 < config.dogPeriodCost) {
-        throw StateError('The first payment must cover at least ${config.priceLabel()} for one ${config.dogPeriodDays}-day dog access period.');
+      if (amount + 0.0001 < academyDoubloonPounds) {
+        throw StateError('The first payment must cover at least £${academyDoubloonPounds.toStringAsFixed(2)} for one $academyDoubloonAccessDays-day dog access period.');
       }
       // The first configured dog-access fee pays for the first dog's first voyage when the learner activates the code.
-      creditToAdd = max(0.0, amount - config.dogPeriodCost);
+      creditToAdd = max(0.0, amount - academyDoubloonPounds);
     }
     if (creditToAdd > 0) {
-      await addAcademyCredit(uid: uid, amount: creditToAdd, actor: actor, note: isInitial ? 'Extra Academy credit after first dog access period' : 'Payment confirmed');
+      await addAcademyCredit(uid: uid, amount: creditToAdd, actor: actor, note: isInitial ? 'Extra Doubloons after first dog access period' : 'Payment confirmed');
     }
     await db.collection('paymentRequests').doc(id).update({'status': 'confirmed', 'confirmedBy': actor, 'confirmedAt': FieldValue.serverTimestamp()});
     if (isInitial) {
@@ -912,16 +959,15 @@ class FirestoreService {
   }
 
   Future<void> migrateLegacyDog({required String dogId, required String uid, required String actor}) async {
-    final config = await getAcademyConfig();
     await db.collection('dogs').doc(dogId).update({
       'academyStatus': 'active',
       'pauseRequested': false,
       'registered': true,
       'activatedAt': FieldValue.serverTimestamp(),
-      'accessUntil': Timestamp.fromDate(DateTime.now().add(Duration(days: config.dogPeriodDays))),
+      'accessUntil': Timestamp.fromDate(DateTime.now().add(const Duration(days: academyDoubloonAccessDays))),
     });
-    await notifyUser(uid: uid, title: '🏴‍☠️ V1.3 voyage ready', body: 'Your existing Academy dog has been given a fresh ${config.dogPeriodDays}-day V1.3 access period.', type: 'account', targetId: dogId);
-    await _audit('Legacy dog migrated', dogId, '${config.dogPeriodDays}-day V1.3 access granted', actor);
+    await notifyUser(uid: uid, title: '🏴‍☠️ V1.4 voyage ready', body: 'Your existing Academy dog has been given a fresh $academyDoubloonAccessDays-day Academy access period.', type: 'account', targetId: dogId);
+    await _audit('Legacy dog migrated', dogId, '$academyDoubloonAccessDays-day V1.4 access granted', actor);
   }
 
   // Feedback, notes, audit, captain log

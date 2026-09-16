@@ -1,19 +1,19 @@
-# Menai Muttineers Academy V1.3
+# Menai Muttineers Academy V1.4
 
 One shared Menai Muttineers Pre-Flyball Academy for Android and the web. The APK and web app use the same Firebase accounts and data.
 
 
 ## English / Welsh
 
-V1.3 is bilingual. Learners and staff can switch between **EN | CY** from the app header. The choice is remembered and follows the Academy account. Fixed Academy interface text is translated in the app. Captain notices can be auto-translated from English to Welsh using the supplied Firebase callable function, then manually checked before publishing. Learner/trainer conversation text is never silently translated.
+V1.4 is bilingual. Learners and staff can switch between **EN | CY** from the app header. The choice is remembered and follows the Academy account. Fixed Academy interface text is translated in the app. Captain notices can be auto-translated from English to Welsh using the supplied Firebase callable function, then manually checked before publishing. Learner/trainer conversation text is never silently translated.
 
-## V1.3 at a glance
+## V1.4 at a glance
 
 ### Learners
 - Clear new-user / existing-user landing screen and secure Forgot Password flow.
 - One learner account can manage several dogs; each dog has its own paid Academy voyage.
-- Academy price and voyage length are controlled live by Captain/Admin rather than hard-coded.
-- Account credit ledger, external bank-payment instructions, payment reference and payment confirmation request.
+- Academy access uses Doubloons: 1 Doubloon = £5 = 30 days for one dog.
+- Live Doubloon balance and history, external bank-payment instructions, payment reference and payment confirmation request.
 - Pause a dog at the end of its current paid voyage; a paused dog keeps its history but course access is locked until Restart Adventure.
 - 1-to-1 requests remain available for paused dogs and are charged separately; the guidance text/price is Admin-editable.
 - Eight structured Key Skills with 5–9 lessons each, YouTube lessons, lesson progress and assessments.
@@ -22,7 +22,7 @@ V1.3 is bilingual. Learners and staff can switch between **EN | CY** from the ap
 - Captain's Trophy Cabin with shadowed `???` awards, trophy reveals, confetti and sounds.
 - Automatic milestone, birthday and Start Lights trophies.
 - Crew/friend requests, privacy controls, positive achievement feed and preset Kudos.
-- Games & Practice: Flyball Start Lights and short training timer with pirate-themed alarms.
+- Games & Practice: Flyball Start Lights, responsive training timer and a Pirate Fun area with a pirate-name generator and English/Welsh/Pirate translator.
 - Follow & Support page for social media, Easyfundraising, GoFundMe, website and bank-payment information.
 - Treasure Chest merchandise teaser and interest capture.
 - Optional compressed member/dog profile photos through Firebase Storage.
@@ -37,10 +37,10 @@ V1.3 is bilingual. Learners and staff can switch between **EN | CY** from the ap
 - One-page Dog Snapshot showing progress and current Academy status.
 
 ### Admin
-- Dynamic Academy settings: price per dog, voyage days, 1-to-1 guide wording/price/duration, payment-reference suffix and account-closure wording.
+- Academy access fixed at 1 Doubloon (£5) for 30 days per dog, with editable 1-to-1 wording/price/duration, payment-reference suffix and account-closure wording.
 - Bank details, standing-order/direct-debit instructions and social/fundraising links can all be edited live.
 - Manage Learner / Trainer / Admin / Captain roles from inside the app.
-- Account credit, payment confirmation, pause/restart requests and legacy V1.2 dog migration.
+- Doubloon controls, payment confirmation, pause/restart requests and legacy dog migration.
 - Course/YouTube editor, music library, celebration calendar, notices, feature switches, saved replies and account-deletion requests.
 
 ### Captain
@@ -49,15 +49,15 @@ V1.3 is bilingual. Learners and staff can switch between **EN | CY** from the ap
 - Privacy-safe social summary for sharing public Academy achievements.
 - Captain's Log, audit trail, System Health and safe Preview as Learner / Test Deck.
 
-## Important V1.3 setup
+## Important V1.4 setup
 
-1. Upload V1.3 to the existing GitHub repository.
-2. Replace/publish the supplied `firestore.rules` in Firebase.
+1. Upload V1.4 to the existing GitHub repository.
+2. V1.4 does not need new Firestore permissions if V1.3 rules are already live; the supplied rules remain the reference copy.
 3. Update `.github/workflows/build-apps.yml` if the hidden `.github` folder did not upload.
 4. Let GitHub build the Android APK and web app.
 5. Test the core app first.
 6. Optional/full features:
    - Enable Firebase Storage and publish `storage.rules` for profile photos.
-   - Deploy the supplied Firebase Functions for background push, daily renewals/pauses, automatic celebration messages and complete Admin-approved account deletion.
+   - Deploy the supplied Firebase Functions for the learner English/Welsh translator, background push, daily renewals/pauses, automatic celebration messages and complete Admin-approved account deletion.
 
-The app can build and the main Academy can be tested before Storage/Functions are enabled. See `V1_3_SETUP_GUIDE.md`.
+The app can build and the main Academy can be tested before Storage/Functions are enabled. See `V1_4_SETUP_GUIDE.md`.

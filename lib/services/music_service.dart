@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'audio_mix.dart';
 
 class MusicTrack {
   final String id;
@@ -60,9 +61,9 @@ class AcademyMusicService {
     try {
       await _player.setVolume(_volume);
       if (track.asset) {
-        await _player.play(AssetSource(track.source));
+        await _player.play(AssetSource(track.source), ctx: academyMixAudioContext);
       } else {
-        await _player.play(UrlSource(track.source));
+        await _player.play(UrlSource(track.source), ctx: academyMixAudioContext);
       }
     } catch (_) {
       await _playNext();

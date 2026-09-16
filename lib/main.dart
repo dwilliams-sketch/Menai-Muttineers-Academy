@@ -133,8 +133,8 @@ class PaymentWaitingScreen extends StatefulWidget {
 class _PaymentWaitingScreenState extends State<PaymentWaitingScreen> {
   final service = FirestoreService();
 
-  Future<void> _reportPayment(DogProfile dog, AcademyConfig config) async {
-    final amount = TextEditingController(text: config.dogPeriodCost.toStringAsFixed(2));
+  Future<void> _reportPayment(DogProfile dog) async {
+    final amount = TextEditingController(text: academyDoubloonPounds.toStringAsFixed(2));
     String method = 'Bank transfer';
     final ok = await showDialog<bool>(
       context: context,
@@ -208,7 +208,7 @@ class _PaymentWaitingScreenState extends State<PaymentWaitingScreen> {
                             I18nText('Pay outside the app', style: Theme.of(context).textTheme.titleLarge),
                             const I18nText('The Academy never takes card or bank details inside the app. Use your normal banking app / standing order.'),
                             const SizedBox(height: 6),
-                            I18nText('${config.priceLabel()} gives one dog ${config.dogPeriodDays} days of Academy access.'),
+                            const I18nText('1 Doubloon (£5) gives one dog 30 days of Academy access.'),
                             const SizedBox(height: 12),
                             if (links.accountName.isNotEmpty) I18nText('Account name: ${links.accountName}'),
                             if (links.bankName.isNotEmpty) I18nText('Bank: ${links.bankName}'),
@@ -225,7 +225,7 @@ class _PaymentWaitingScreenState extends State<PaymentWaitingScreen> {
                               I18nText(links.directDebitInfo),
                             ],
                             const SizedBox(height: 14),
-                            FilledButton.icon(onPressed: () => _reportPayment(dog, config), icon: const Icon(Icons.outgoing_mail), label: const I18nText('I’VE MADE A PAYMENT')),
+                            FilledButton.icon(onPressed: () => _reportPayment(dog), icon: const Icon(Icons.outgoing_mail), label: const I18nText('I’VE MADE A PAYMENT')),
                           ]))),
                           const SizedBox(height: 10),
                           const Card(child: Padding(padding: EdgeInsets.all(16), child: I18nText('Once Admin confirms payment, you’ll receive your 6-character activation code. You are already logged in — there is no need to use Forgot Password or sign in again.'))),

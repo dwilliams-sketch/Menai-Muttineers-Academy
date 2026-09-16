@@ -160,10 +160,9 @@ exports.pushAcademyNotification = onDocumentCreated('notifications/{notification
 });
 
 exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: 'Europe/London'}, async () => {
-  const settings = await db.collection('settings').doc('academy').get();
-  const config = settings.data() || {};
-  const cost = Number(config.dogPeriodCost ?? 5);
-  const days = Math.max(1, Number(config.dogPeriodDays ?? 30));
+  // V1.4 learner currency is fixed: 1 Doubloon = £5 = 30 days for one dog.
+  const cost = 5;
+  const days = 30;
   const now = new Date();
 
   // Per-dog pause / renewal processing.
@@ -195,15 +194,15 @@ exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: '
       });
       tx.set(userRef.collection('ledger').doc(), {
         type: 'debit', amount: -cost, dogId: dogDoc.id,
-        description: `${dog.name || 'Dog'} — ${days} days Academy access`, actor: 'automatic renewal',
+        description: `${dog.name || 'Dog'} — 1 Doubloon / ${days} days Academy access`, actor: 'automatic renewal',
         createdAt: FieldValue.serverTimestamp(),
       });
       renewed = true;
     });
     if (renewed) {
-      await createNotification(dog.ownerId, '🏴‍☠️ Adventure renewed', `${dog.name || 'Your dog'} has another ${days} days aboard the Academy.`, 'account', dogDoc.id, `auto_renew_${dogDoc.id}_${dayKey(now)}`);
+      await createNotification(dog.ownerId, '🏴‍☠️ Adventure renewed', `1 Doubloon has opened another ${days} days aboard the Academy for ${dog.name || 'your dog'}.`, 'account', dogDoc.id, `auto_renew_${dogDoc.id}_${dayKey(now)}`);
     } else {
-      await createNotification(dog.ownerId, '💰 Academy credit needed', `${dog.name || 'Your dog'} needs more Academy credit before the next voyage can begin.`, 'account', dogDoc.id, `auto_low_credit_${dogDoc.id}_${dayKey(now)}`);
+      await createNotification(dog.ownerId, '🪙 Doubloon needed', `${dog.name || 'Your dog'} needs 1 Doubloon before the next voyage can begin.`, 'account', dogDoc.id, `auto_low_credit_${dogDoc.id}_${dayKey(now)}`);
     }
   }
 
@@ -361,3 +360,33 @@ exports.translateAdminText = onCall(async (request) => {
   });
   return {text: response.translations?.[0]?.translatedText || ''};
 });
+
+// V1.4 learner fun tool: short English/Welsh translation.
+// Pirate wording is generated on-device; Cloud Translation is only used for EN <-> CY.
+exports.translateAcademyText = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
+  const user = await db.collection('users').doc(request.auth.uid).get();
+  if (!user.exists) throw new HttpsError('permission-denied', 'Academy account required.');
+
+  const text = String(request.data?.text || '').trim();
+  const source = String(request.data?.sourceLanguage || 'en');
+  const target = String(request.data?.targetLanguage || 'cy');
+  if (!text) return {text: ''};
+  if (!['en', 'cy'].includes(source) || !['en', 'cy'].includes(target) || source === target) {
+    throw new HttpsError('invalid-argument', 'Only English and Welsh translation is supported.');
+  }
+  // This is a small fun utility, not a document translation service.
+  if (text.length > 800) throw new HttpsError('invalid-argument', 'Keep translations under 800 characters.');
+
+  const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || admin.app().options.projectId;
+  const parent = `projects/${projectId}/locations/global`;
+  const [response] = await translationClient.translateText({
+    parent,
+    contents: [text],
+    mimeType: 'text/plain',
+    sourceLanguageCode: source,
+    targetLanguageCode: target,
+  });
+  return {text: response.translations?.[0]?.translatedText || ''};
+});
+

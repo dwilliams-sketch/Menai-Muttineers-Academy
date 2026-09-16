@@ -6,6 +6,7 @@ import '../../i18n.dart';
 import '../../course_data.dart';
 import '../../models.dart';
 import '../../services/firestore_service.dart';
+import '../../services/audio_mix.dart';
 import '../../widgets/trophy_art.dart';
 
 class TrophyCabin extends StatelessWidget {
@@ -101,6 +102,6 @@ class TrophyRevealDialog extends StatefulWidget {
 class _TrophyRevealDialogState extends State<TrophyRevealDialog>{
   final confetti=ConfettiController(duration:const Duration(seconds:2)); final player=AudioPlayer(); final service=FirestoreService(); bool accepted=false,busy=false;
   @override void dispose(){confetti.dispose();player.dispose();super.dispose();}
-  Future<void> accept()async{if(busy)return;setState(()=>busy=true);if(widget.handlerTrophy){await service.acceptHandlerTrophy(widget.profile.id,widget.trophyId);}else if(widget.dog!=null){await service.acceptTrophy(widget.dog!.id,widget.trophyId);}if(widget.profile.celebrationSound){try{await player.play(AssetSource('sounds/trophy_chime.wav'));}catch(_){}}confetti.play();if(mounted)setState((){accepted=true;busy=false;});await Future.delayed(const Duration(milliseconds:1700));if(mounted)Navigator.pop(context);}
+  Future<void> accept()async{if(busy)return;setState(()=>busy=true);if(widget.handlerTrophy){await service.acceptHandlerTrophy(widget.profile.id,widget.trophyId);}else if(widget.dog!=null){await service.acceptTrophy(widget.dog!.id,widget.trophyId);}if(widget.profile.celebrationSound){try{await player.play(AssetSource('sounds/trophy_chime.wav'), ctx: academyMixAudioContext);}catch(_){}}confetti.play();if(mounted)setState((){accepted=true;busy=false;});await Future.delayed(const Duration(milliseconds:1700));if(mounted)Navigator.pop(context);}
   @override Widget build(BuildContext context){final title=(widget.trophy['title']??'New Trophy').toString();final desc=(widget.trophy['description']??'').toString();final art=(widget.trophy['artKey']??'firstskill').toString();return Dialog(child:Stack(alignment:Alignment.topCenter,children:[Padding(padding:const EdgeInsets.all(24),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:440),child:Column(mainAxisSize:MainAxisSize.min,children:[I18nText(accepted?'TROPHY ACCEPTED!':'SOMETHING ARRIVED IN THE CAPTAIN’S CABIN!',style:Theme.of(context).textTheme.headlineSmall,textAlign:TextAlign.center),const SizedBox(height:12),TrophyArt(artKey:art,locked:false,size:150),I18nText(title,style:Theme.of(context).textTheme.titleLarge,textAlign:TextAlign.center),if(desc.isNotEmpty)Padding(padding:const EdgeInsets.only(top:6),child:I18nText(desc,textAlign:TextAlign.center)),const SizedBox(height:18),if(!accepted)SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:busy?null:accept,icon:const Icon(Icons.celebration),label:I18nText(busy?'Opening...':'ACCEPT TROPHY'))),if(!accepted)TextButton(onPressed:()=>Navigator.pop(context),child:const I18nText('Open it later'))]))),IgnorePointer(child:ConfettiWidget(confettiController:confetti,blastDirectionality:BlastDirectionality.explosive,numberOfParticles:32,gravity:.16))]));}
 }

@@ -1,3 +1,15 @@
+# V1.4.0+10 — Engagement & Usability
+
+- Replaced learner-facing £ credit with **Doubloons**: 1 Doubloon = £5 = 30 days for one dog. Existing Firestore balances stay compatible because money is still stored internally in pounds.
+- Doubloon balances now update live for learners and staff without a page refresh.
+- Upgraded the staff dog directory into a clearer **People Manager**, with live Doubloon controls and role changes.
+- Added **Pirate Fun** with a privacy-friendly pirate-name generator and English / Welsh / Pirate translator. Pirate names are fun only and are never saved to the user profile.
+- Added a learner callable English↔Welsh translation function; Pirate Talk is generated locally.
+- Completed the Welsh fixed-UI/course-content audit and added a build-time Welsh coverage check.
+- Fixed longer Welsh timer dialogs and game tabs for smaller phone screens.
+- Changed music/effect audio focus so timer and trophy sounds can mix with background music instead of stopping it.
+- Updated app/build version to `1.4.0+10`.
+
 # Changelog
 
 ## V1.3 build 9 — Firebase dependency stability fix

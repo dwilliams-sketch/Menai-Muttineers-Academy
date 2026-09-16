@@ -35,7 +35,7 @@ class _StaffShellState extends State<StaffShell>{
     ];
     if(index>=pages.length)index=0;
     final role=widget.profile.isCaptain?'Captain':widget.profile.isAdmin?'Admin':'Trainer';
-    return Scaffold(appBar:AppBar(title:I18nText('$role — Academy V1.3'),actions:[LanguageToggle(userId: widget.profile.id), NotificationBell(profile:widget.profile),IconButton(tooltip:'Sign out',onPressed:()=>FirebaseAuth.instance.signOut(),icon:const Icon(Icons.logout))]),body:pages[index],bottomNavigationBar:NavigationBar(selectedIndex:index,labelBehavior:NavigationDestinationLabelBehavior.onlyShowSelected,onDestinationSelected:(v)=>setState(()=>index=v),destinations:dest));
+    return Scaffold(appBar:AppBar(title:I18nText('$role — Academy V1.4'),actions:[LanguageToggle(userId: widget.profile.id), NotificationBell(profile:widget.profile),IconButton(tooltip:'Sign out',onPressed:()=>FirebaseAuth.instance.signOut(),icon:const Icon(Icons.logout))]),body:pages[index],bottomNavigationBar:NavigationBar(selectedIndex:index,labelBehavior:NavigationDestinationLabelBehavior.onlyShowSelected,onDestinationSelected:(v)=>setState(()=>index=v),destinations:dest));
   }
 }
 
@@ -220,7 +220,7 @@ class AccountQueue extends StatelessWidget {
             const SizedBox(height: 8),
             SelectableText(code, style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 8),
-            const I18nText('The first Academy access charge has been applied at the current Admin-set price. Any extra amount has been added as Academy credit.'),
+            const I18nText('The first £5 payment has opened the first 30-day voyage. Any extra full or part balance has been added as Doubloons.'),
           ]),
           actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const I18nText('Done'))],
         ),
@@ -231,7 +231,7 @@ class AccountQueue extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!profile.canManageAccounts) {
-      return const Card(child: Padding(padding: EdgeInsets.all(16), child: I18nText('Account/payment controls are Admin/Captain only.')));
+      return const Card(child: Padding(padding: EdgeInsets.all(16), child: I18nText('Doubloon and payment controls are Admin/Captain only.')));
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       I18nText('Payment confirmations', style: Theme.of(context).textTheme.titleLarge),
@@ -262,7 +262,7 @@ class AccountQueue extends StatelessWidget {
             final m = d.data();
             return Card(child: ListTile(
               title: I18nText('${m['dogName']} wants to restart'),
-              subtitle: const I18nText('Uses Academy credit for a fresh voyage at the current Admin-set price and access period.'),
+              subtitle: const I18nText('Uses 1 Doubloon for a fresh 30-day voyage.'),
               trailing: FilledButton(
                 onPressed: () => service.approveRestart(requestId: d.id, uid: (m['userId'] ?? '').toString(), dogId: (m['dogId'] ?? '').toString(), actor: profile.name),
                 child: const I18nText('APPROVE'),
@@ -289,7 +289,7 @@ class AccountQueue extends StatelessWidget {
             return Card(child: ListTile(
               leading: Icon(dog.pauseRequested ? Icons.pause_circle : Icons.autorenew),
               title: I18nText(dog.name),
-              subtitle: I18nText(dog.pauseRequested ? 'Pause requested — close this voyage without another deduction.' : 'Access period ended — use available Academy credit for the next voyage.'),
+              subtitle: I18nText(dog.pauseRequested ? 'Pause requested — close this voyage without another deduction.' : 'Access period ended — use 1 available Doubloon for the next 30-day voyage.'),
               trailing: FilledButton.tonal(
                 onPressed: () => service.processDueRenewal(uid: dog.ownerId, dog: dog, actor: profile.name),
                 child: I18nText(dog.pauseRequested ? 'PAUSE' : 'PROCESS'),
@@ -334,9 +334,220 @@ class StaffFollowUpQueue extends StatelessWidget {
       );
 }
 
-class DogDirectory extends StatefulWidget{final AppUser profile;const DogDirectory({super.key,required this.profile});@override State<DogDirectory> createState()=>_DogDirectoryState();}
-class _DogDirectoryState extends State<DogDirectory>{final service=FirestoreService();String q='';
-  @override Widget build(BuildContext context)=>StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(stream:service.allUsers(),builder:(context,uSnap)=>StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(stream:service.allDogs(),builder:(context,dSnap){final users={for(final u in uSnap.data?.docs??[])u.id:u.data()};final dogs=(dSnap.data?.docs??[]).where((d){final m=d.data();final u=users[m['ownerId']]??{};final needle=q.toLowerCase();return needle.isEmpty||(m['name']??'').toString().toLowerCase().contains(needle)||(u['name']??'').toString().toLowerCase().contains(needle)||(u['email']??'').toString().toLowerCase().contains(needle);}).toList();return ListView(padding:const EdgeInsets.all(16),children:[I18nText('Learners & Dogs',style:Theme.of(context).textTheme.headlineSmall),TextField(onChanged:(v)=>setState(()=>q=v),decoration:const InputDecoration(prefixIcon:Icon(Icons.search),label: I18nText('Search dog, learner or email'))),const SizedBox(height:10),...dogs.map((d){final m=d.data();final owner=users[m['ownerId']]??{};final status=(m['academyStatus']??(owner['activated']==true?'active':'awaiting')).toString();return Card(child:ListTile(leading:CircleAvatar(backgroundImage:(m['photoUrl']??'').toString().startsWith('http')?NetworkImage(m['photoUrl']):null,child:(m['photoUrl']??'').toString().isEmpty?const Icon(Icons.pets):null),title:I18nText('${m['name']??'Dog'} — ${owner['name']??'Learner'}'),subtitle:I18nText('${(m['breed']??'')} • ${status.toUpperCase()}${m['watchList']==true?' • 👀 WATCH LIST':''}'),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>DogSnapshot(profile:widget.profile,dogId:d.id,dog:m,ownerId:(m['ownerId']??'').toString(),owner:owner)))));})]);}));}
+class DogDirectory extends StatefulWidget {
+  final AppUser profile;
+  const DogDirectory({super.key, required this.profile});
+  @override
+  State<DogDirectory> createState() => _DogDirectoryState();
+}
+
+class _DogDirectoryState extends State<DogDirectory> {
+  final service = FirestoreService();
+  String q = '';
+
+  Future<void> _adjustDoubloons(BuildContext context, String uid, String learnerName) async {
+    final controller = TextEditingController(text: '1');
+    bool remove = false;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: I18nText('Adjust Doubloons — $learnerName'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                const I18nText('1 Doubloon = £5 = 30 days access for one dog.'),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [1, 2, 3, 6]
+                      .map((n) => ActionChip(
+                            label: I18nText('+$n'),
+                            onPressed: () {
+                              controller.text = '$n';
+                              setLocal(() => remove = false);
+                            },
+                          ))
+                      .toList(),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: controller,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(label: I18nText('Number of Doubloons')),
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, icon: Icon(Icons.add_circle_outline), label: I18nText('ADD')),
+                    ButtonSegment(value: true, icon: Icon(Icons.remove_circle_outline), label: I18nText('REMOVE')),
+                  ],
+                  selected: {remove},
+                  onSelectionChanged: (v) => setLocal(() => remove = v.first),
+                ),
+              ]),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const I18nText('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const I18nText('SAVE')),
+          ],
+        ),
+      ),
+    );
+    final count = double.tryParse(controller.text.trim());
+    if (ok == true && count != null && count > 0) {
+      final changed = await service.adjustAcademyDoubloons(
+        uid: uid,
+        doubloons: remove ? -count : count,
+        actor: widget.profile.name,
+      );
+      if (context.mounted && !changed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: I18nText('That would take the Doubloon balance below zero.')),
+        );
+      }
+    }
+    controller.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: service.allUsers(),
+        builder: (context, uSnap) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: service.allDogs(),
+          builder: (context, dSnap) {
+            if (!uSnap.hasData || !dSnap.hasData) return const LinearProgressIndicator();
+
+            final dogsByOwner = <String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>{};
+            for (final dog in dSnap.data!.docs) {
+              final ownerId = (dog.data()['ownerId'] ?? '').toString();
+              dogsByOwner.putIfAbsent(ownerId, () => []).add(dog);
+            }
+
+            final needle = q.trim().toLowerCase();
+            final users = uSnap.data!.docs.where((u) {
+              final m = u.data();
+              final dogs = dogsByOwner[u.id] ?? const [];
+              if (needle.isEmpty) return true;
+              return (m['name'] ?? '').toString().toLowerCase().contains(needle) ||
+                  (m['email'] ?? '').toString().toLowerCase().contains(needle) ||
+                  (m['role'] ?? '').toString().toLowerCase().contains(needle) ||
+                  dogs.any((d) => (d.data()['name'] ?? '').toString().toLowerCase().contains(needle));
+            }).toList()
+              ..sort((a, b) {
+                final an = (a.data()['name'] ?? '').toString().toLowerCase();
+                final bn = (b.data()['name'] ?? '').toString().toLowerCase();
+                return an.compareTo(bn);
+              });
+
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                I18nText('People Manager', style: Theme.of(context).textTheme.headlineSmall),
+                const I18nText('Search people once, then manage their role, Doubloons and dogs from the same place.'),
+                const SizedBox(height: 8),
+                TextField(
+                  onChanged: (v) => setState(() => q = v),
+                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search), label: I18nText('Search dog, learner or email')),
+                ),
+                const SizedBox(height: 10),
+                if (users.isEmpty)
+                  const Card(child: Padding(padding: EdgeInsets.all(16), child: I18nText('No people match that search.'))),
+                ...users.map((u) {
+                  final owner = u.data();
+                  final role = (owner['role'] ?? 'learner').toString();
+                  final roleValue = ['learner', 'trainer', 'admin', 'captain'].contains(role) ? role : 'learner';
+                  final balance = (owner['academyCredit'] as num?)?.toDouble() ?? 0;
+                  final dogs = dogsByOwner[u.id] ?? const [];
+                  final dogNames = dogs.map((d) => (d.data()['name'] ?? 'Dog').toString()).join(', ');
+                  return Card(
+                    child: ExpansionTile(
+                      leading: CircleAvatar(
+                        backgroundImage: (owner['photoUrl'] ?? '').toString().startsWith('http') ? NetworkImage(owner['photoUrl']) : null,
+                        child: (owner['photoUrl'] ?? '').toString().isEmpty ? const Icon(Icons.person) : null,
+                      ),
+                      title: I18nText((owner['name'] ?? 'Learner').toString()),
+                      subtitle: I18nText('${role.toUpperCase()} • ${doubloonBalanceLabel(balance)} • ${dogs.length} ${dogs.length == 1 ? 'dog' : 'dogs'}'),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      children: [
+                        if ((owner['email'] ?? '').toString().isNotEmpty)
+                          Align(alignment: Alignment.centerLeft, child: I18nText((owner['email'] ?? '').toString())),
+                        if (widget.profile.canManageAccounts) ...[
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 210,
+                                child: DropdownButtonFormField<String>(
+                                  initialValue: roleValue,
+                                  decoration: const InputDecoration(label: I18nText('Academy role')),
+                                  items: ['learner', 'trainer', 'admin', 'captain']
+                                      .map((r) => DropdownMenuItem(value: r, child: I18nText(r.toUpperCase())))
+                                      .toList(),
+                                  onChanged: (v) {
+                                    if (v != null && v != roleValue) service.setUserRole(u.id, v, actor: widget.profile.name);
+                                  },
+                                ),
+                              ),
+                              if (role == 'learner')
+                                FilledButton.tonalIcon(
+                                  onPressed: () => service.adjustAcademyDoubloons(uid: u.id, doubloons: 1, actor: widget.profile.name),
+                                  icon: const Icon(Icons.add_circle_outline),
+                                  label: const I18nText('+1 DOUBLOON'),
+                                ),
+                              if (role == 'learner')
+                                OutlinedButton.icon(
+                                  onPressed: () => _adjustDoubloons(context, u.id, (owner['name'] ?? 'Learner').toString()),
+                                  icon: const Icon(Icons.monetization_on_outlined),
+                                  label: const I18nText('ADJUST DOUBLOONS'),
+                                ),
+                            ],
+                          ),
+                        ],
+                        const Divider(height: 22),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: I18nText(dogs.isEmpty ? 'No dogs on this account.' : 'Dogs: $dogNames', style: const TextStyle(fontWeight: FontWeight.w600)),
+                        ),
+                        ...dogs.map((d) {
+                          final dog = d.data();
+                          final status = (dog['academyStatus'] ?? (owner['activated'] == true ? 'active' : 'awaiting')).toString();
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.pets),
+                            title: I18nText((dog['name'] ?? 'Dog').toString()),
+                            subtitle: I18nText('${(dog['breed'] ?? '')} • ${status.toUpperCase()}${dog['watchList'] == true ? ' • 👀 WATCH LIST' : ''}'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DogSnapshot(
+                                  profile: widget.profile,
+                                  dogId: d.id,
+                                  dog: dog,
+                                  ownerId: u.id,
+                                  owner: owner,
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            );
+          },
+        ),
+      );
+}
 
 class DogSnapshot extends StatelessWidget {
   final AppUser profile;
@@ -345,15 +556,49 @@ class DogSnapshot extends StatelessWidget {
   DogSnapshot({super.key, required this.profile, required this.dogId, required this.dog, required this.ownerId, required this.owner});
   final service = FirestoreService();
 
-  Future<void> addCredit(BuildContext context) async {
-    final c = TextEditingController();
-    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-      title: const I18nText('Add Academy credit'),
-      content: TextField(controller: c, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(label: I18nText('Amount £'))),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const I18nText('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const I18nText('ADD'))],
-    ));
-    final amount = double.tryParse(c.text);
-    if (ok == true && amount != null && amount > 0) await service.addAcademyCredit(uid: ownerId, amount: amount, actor: profile.name);
+  Future<void> adjustDoubloons(BuildContext context) async {
+    final c = TextEditingController(text: '1');
+    bool remove = false;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const I18nText('Adjust Doubloons'),
+          content: SizedBox(
+            width: 430,
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                const I18nText('1 Doubloon = £5 = 30 days access for one dog.'),
+                const SizedBox(height: 10),
+                Wrap(spacing: 8, runSpacing: 8, children: [1, 2, 3, 6].map((n) => ActionChip(label: I18nText('+$n'), onPressed: () { c.text = '$n'; setLocal(() => remove = false); })).toList()),
+                const SizedBox(height: 10),
+                TextField(controller: c, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(label: I18nText('Number of Doubloons'))),
+                const SizedBox(height: 8),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, icon: Icon(Icons.add_circle_outline), label: I18nText('ADD')),
+                    ButtonSegment(value: true, icon: Icon(Icons.remove_circle_outline), label: I18nText('REMOVE')),
+                  ],
+                  selected: {remove},
+                  onSelectionChanged: (v) => setLocal(() => remove = v.first),
+                ),
+              ]),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const I18nText('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const I18nText('SAVE')),
+          ],
+        ),
+      ),
+    );
+    final count = double.tryParse(c.text.trim());
+    if (ok == true && count != null && count > 0) {
+      final changed = await service.adjustAcademyDoubloons(uid: ownerId, doubloons: remove ? -count : count, actor: profile.name);
+      if (context.mounted && !changed) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: I18nText('That would take the Doubloon balance below zero.')));
+      }
+    }
     c.dispose();
   }
 
@@ -406,7 +651,23 @@ class DogSnapshot extends StatelessWidget {
           I18nText('${owner['email'] ?? ''} • ${owner['phone'] ?? ''}'),
           I18nText('Breed: ${dog['breed'] ?? ''} • DOB: ${dog['dateOfBirth'] ?? 'Not set'}'),
           I18nText('Academy status: ${status.toUpperCase()}'),
-          I18nText('Account credit: £${((owner['academyCredit'] as num?)?.toDouble() ?? 0).toStringAsFixed(2)}'),
+          StreamBuilder<DocumentSnapshot<Map<String,dynamic>>>(stream:service.userStream(ownerId),builder:(context,snap){final credit=(snap.data?.data()?['academyCredit'] as num?)?.toDouble()??((owner['academyCredit'] as num?)?.toDouble()??0);return I18nText('Doubloon balance: ${doubloonBalanceLabel(credit)}');}),
+          if (profile.canManageAccounts) StreamBuilder<DocumentSnapshot<Map<String,dynamic>>>(
+            stream: service.userStream(ownerId),
+            builder: (context, snap) {
+              final data = snap.data?.data() ?? owner;
+              final role = (data['role'] ?? 'learner').toString();
+              final value = ['learner','trainer','admin','captain'].contains(role) ? role : 'learner';
+              return Row(children: [
+                const Expanded(child: I18nText('Academy role')),
+                DropdownButton<String>(
+                  value: value,
+                  items: ['learner','trainer','admin','captain'].map((r) => DropdownMenuItem(value: r, child: I18nText(r.toUpperCase()))).toList(),
+                  onChanged: (v) { if (v != null) service.setUserRole(ownerId, v, actor: profile.name); },
+                ),
+              ]);
+            },
+          ),
           if ((dog['experience'] ?? '').toString().isNotEmpty) I18nText('Experience: ${dog['experience']}'),
           if ((dog['notes'] ?? '').toString().isNotEmpty) I18nText('Learner notes: ${dog['notes']}'),
           const SizedBox(height: 10),
@@ -414,14 +675,14 @@ class DogSnapshot extends StatelessWidget {
             OutlinedButton.icon(onPressed: () => note(context), icon: const Icon(Icons.note_add), label: const I18nText('STAFF NOTE')),
             OutlinedButton.icon(onPressed: () => _recommendSkill(context), icon: const Icon(Icons.assistant_direction), label: const I18nText('RECOMMEND SKILL')),
             OutlinedButton.icon(onPressed: () => service.updateDog(dogId, {'watchList': dog['watchList'] != true}), icon: const Icon(Icons.visibility), label: I18nText(dog['watchList'] == true ? 'REMOVE WATCH' : 'WATCH LIST')),
-            if (profile.canManageAccounts) FilledButton.tonalIcon(onPressed: () => addCredit(context), icon: const Icon(Icons.add_card), label: const I18nText('ADD CREDIT')),
+            if (profile.canManageAccounts) FilledButton.tonalIcon(onPressed: () => adjustDoubloons(context), icon: const Icon(Icons.monetization_on_outlined), label: const I18nText('ADJUST DOUBLOONS')),
             if (legacy && profile.canManageAccounts) FilledButton.icon(
               onPressed: () async {
                 await service.migrateLegacyDog(dogId: dogId, uid: ownerId, actor: profile.name);
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: I18nText('Legacy dog moved onto a fresh V1.3 Academy voyage.')));
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: I18nText('Legacy dog moved onto a fresh V1.4 Academy voyage.')));
               },
               icon: const Icon(Icons.upgrade),
-              label: const I18nText('START V1.3 ACCESS'),
+              label: const I18nText('START V1.4 ACCESS'),
             ),
           ]),
         ]))),
@@ -700,8 +961,6 @@ class AcademySettingsEditor extends StatefulWidget {
 
 class _AcademySettingsEditorState extends State<AcademySettingsEditor> {
   final service = FirestoreService();
-  final cost = TextEditingController();
-  final days = TextEditingController();
   final onePrice = TextEditingController();
   final oneMinutes = TextEditingController();
   final oneWording = TextEditingController();
@@ -711,22 +970,20 @@ class _AcademySettingsEditorState extends State<AcademySettingsEditor> {
 
   @override
   void dispose() {
-    for (final c in [cost, days, onePrice, oneMinutes, oneWording, suffix, closure]) c.dispose();
+    for (final c in [onePrice, oneMinutes, oneWording, suffix, closure]) c.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => ExpansionTile(
         leading: const Icon(Icons.tune),
-        title: const I18nText('Academy Price, Access & Wording'),
-        subtitle: const I18nText('Change prices, access length and learner wording without rebuilding the app.'),
+        title: const I18nText('Academy Access & Wording'),
+        subtitle: const I18nText('Doubloon access is fixed at £5 / 30 days. Edit the other learner wording and 1-to-1 guide here.'),
         children: [StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           stream: service.academySettings(),
           builder: (context, snap) {
             if (snap.hasData && !loaded) {
               final c = AcademyConfig.fromMap(snap.data?.data() ?? {});
-              cost.text = c.dogPeriodCost.toStringAsFixed(2);
-              days.text = '${c.dogPeriodDays}';
               onePrice.text = c.oneToOneGuidePrice.toStringAsFixed(2);
               oneMinutes.text = '${c.oneToOneGuideMinutes}';
               oneWording.text = c.oneToOneWording;
@@ -738,11 +995,7 @@ class _AcademySettingsEditorState extends State<AcademySettingsEditor> {
             return Padding(
               padding: const EdgeInsets.all(12),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Row(children: [
-                  Expanded(child: TextField(controller: cost, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(label: I18nText('Academy price per dog (£)')))),
-                  const SizedBox(width: 8),
-                  Expanded(child: TextField(controller: days, keyboardType: TextInputType.number, decoration: const InputDecoration(label: I18nText('Access period (days)')))),
-                ]),
+                const Card(child: Padding(padding: EdgeInsets.all(12), child: I18nText('🪙 Academy access: 1 Doubloon = £5 = 30 days for one dog. This is fixed in V1.4.'))),
                 const SizedBox(height: 8),
                 Row(children: [
                   Expanded(child: TextField(controller: onePrice, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(label: I18nText('Typical 1-to-1 guide price (£)')))),
@@ -758,17 +1011,15 @@ class _AcademySettingsEditorState extends State<AcademySettingsEditor> {
                 const SizedBox(height: 10),
                 FilledButton.icon(
                   onPressed: () async {
-                    final c = double.tryParse(cost.text.trim());
-                    final d = int.tryParse(days.text.trim());
                     final p = double.tryParse(onePrice.text.trim());
                     final m = int.tryParse(oneMinutes.text.trim());
-                    if (c == null || c <= 0 || d == null || d <= 0 || p == null || p < 0 || m == null || m <= 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: I18nText('Please check the price and day/minute values.')));
+                    if (p == null || p < 0 || m == null || m <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: I18nText('Please check the 1-to-1 price and minute values.')));
                       return;
                     }
                     await service.saveAcademySettings({
-                      'dogPeriodCost': c,
-                      'dogPeriodDays': d,
+                      'dogPeriodCost': academyDoubloonPounds,
+                      'dogPeriodDays': academyDoubloonAccessDays,
                       'oneToOneGuidePrice': p,
                       'oneToOneGuideMinutes': m,
                       'oneToOneWording': oneWording.text.trim(),
@@ -817,7 +1068,7 @@ class DeletionRequestsPanel extends StatelessWidget {
     } catch (_) {
       await service.updateAccountClosureStatus(doc.id, 'requested');
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: I18nText('The deletion service is not ready yet. Set up V1.3 Firebase Functions using the included guide, then try again.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: I18nText('The deletion service is not ready yet. Set up V1.4 Firebase Functions using the included guide, then try again.')));
       }
     }
   }
@@ -940,7 +1191,7 @@ class _NoticeEditorState extends State<NoticeEditor> {
       msgCy.text = translated[1];
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: I18nText('Auto translated — please review')));
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: I18nText('Automatic translation is not ready yet. Deploy the V1.3 Firebase Functions and enable Cloud Translation, or type the Welsh version manually.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: I18nText('Automatic translation is not ready yet. Deploy the V1.4 Firebase Functions and enable Cloud Translation, or type the Welsh version manually.')));
     } finally {
       if (mounted) setState(() => translating = false);
     }
@@ -1036,4 +1287,4 @@ class FeedbackAdmin extends StatelessWidget{FeedbackAdmin({super.key});final ser
 class CaptainLogPanel extends StatefulWidget{final AppUser profile;const CaptainLogPanel({super.key,required this.profile});@override State<CaptainLogPanel> createState()=>_CaptainLogPanelState();}
 class _CaptainLogPanelState extends State<CaptainLogPanel>{final service=FirestoreService();final c=TextEditingController();@override void dispose(){c.dispose();super.dispose();}@override Widget build(BuildContext context)=>ExpansionTile(leading:const Icon(Icons.menu_book),title:const I18nText('Captain’s Log'),children:[Padding(padding:const EdgeInsets.all(12),child:Row(children:[Expanded(child:TextField(controller:c,decoration:const InputDecoration(label: I18nText('Idea / action / follow-up')))),const SizedBox(width:7),IconButton.filled(onPressed:(){if(c.text.trim().isNotEmpty){service.addCaptainLog(author:widget.profile.name,text:c.text);c.clear();}},icon:const Icon(Icons.add))])),StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(stream:service.captainLog(),builder:(context,snap){final docs=[...(snap.data?.docs??[])]..sort((a,b)=>((b.data()['createdAt']as Timestamp?)?.millisecondsSinceEpoch??0).compareTo((a.data()['createdAt']as Timestamp?)?.millisecondsSinceEpoch??0));return Column(children:docs.map((d)=>CheckboxListTile(value:d.data()['done']==true,title:Text((d.data()['text']??'').toString()),subtitle:Text((d.data()['author']??'').toString()),onChanged:(v)=>service.toggleCaptainLog(d.id,v??false))).toList());})]);}
 
-class SystemHealth extends StatelessWidget{SystemHealth({super.key});final service=FirestoreService();@override Widget build(BuildContext context)=>ExpansionTile(leading:const Icon(Icons.health_and_safety),title:const I18nText('System Health'),children:[const ListTile(leading:Icon(Icons.check_circle,color:Colors.green),title:I18nText('Firebase connection'),subtitle:I18nText('Connected — this screen is reading live Firestore data.')),const ListTile(leading:Icon(Icons.info),title:I18nText('App version'),subtitle:I18nText('V1.3.0+6 • Android + Web')),StreamBuilder<DocumentSnapshot<Map<String,dynamic>>>(stream:service.linkSettings(),builder:(context,snap){final m=snap.data?.data()??{};final missing=['facebook','instagram','tiktok','easyfundraising','gofundme'].where((k)=>(m[k]??'').toString().isEmpty).length;return ListTile(leading:Icon(missing==0?Icons.check_circle:Icons.warning_amber),title:I18nText('$missing social/fundraising links still blank'));}),const ListTile(leading:Icon(Icons.cloud_outlined),title:I18nText('Push & photo note'),subtitle:I18nText('In-app notifications work on the normal setup. True background push and Firebase photo storage use optional Firebase services described in the V1.3 setup guide.'))]);}
+class SystemHealth extends StatelessWidget{SystemHealth({super.key});final service=FirestoreService();@override Widget build(BuildContext context)=>ExpansionTile(leading:const Icon(Icons.health_and_safety),title:const I18nText('System Health'),children:[const ListTile(leading:Icon(Icons.check_circle,color:Colors.green),title:I18nText('Firebase connection'),subtitle:I18nText('Connected — this screen is reading live Firestore data.')),const ListTile(leading:Icon(Icons.info),title:I18nText('App version'),subtitle:I18nText('V1.4.0+10 • Android + Web')),StreamBuilder<DocumentSnapshot<Map<String,dynamic>>>(stream:service.linkSettings(),builder:(context,snap){final m=snap.data?.data()??{};final missing=['facebook','instagram','tiktok','easyfundraising','gofundme'].where((k)=>(m[k]??'').toString().isEmpty).length;return ListTile(leading:Icon(missing==0?Icons.check_circle:Icons.warning_amber),title:I18nText('$missing social/fundraising links still blank'));}),const ListTile(leading:Icon(Icons.cloud_outlined),title:I18nText('Push & photo note'),subtitle:I18nText('In-app notifications work on the normal setup. True background push and Firebase photo storage use optional Firebase services described in the V1.4 setup guide.'))]);}

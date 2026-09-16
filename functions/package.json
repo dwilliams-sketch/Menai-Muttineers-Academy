@@ -1,6 +1,6 @@
 {
   "name": "menai-muttineers-academy-functions",
-  "description": "Backend helpers for Menai Muttineers Academy V1.3",
+  "description": "Backend helpers for Menai Muttineers Academy V1.4",
   "private": true,
   "main": "index.js",
   "engines": {
