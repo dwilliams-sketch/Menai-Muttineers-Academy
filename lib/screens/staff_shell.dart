@@ -745,11 +745,94 @@ class StaffHelpThread extends StatefulWidget {
 class _StaffHelpThreadState extends State<StaffHelpThread> {
   final service = FirestoreService();
   final reply = TextEditingController();
+  final videoLink = TextEditingController();
+
+  late String assignedTo;
+  bool showVideoLink = false;
+  bool sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    assignedTo = (widget.thread['assignedTo'] ?? '').toString();
+  }
 
   @override
   void dispose() {
     reply.dispose();
+    videoLink.dispose();
     super.dispose();
+  }
+
+  Future<void> _claim() async {
+    await service.claimHelpThread(widget.threadId, widget.profile.name);
+
+    if (!mounted) return;
+
+    setState(() {
+      assignedTo = widget.profile.name;
+    });
+  }
+
+  Future<void> _resolve() async {
+    await service.resolveHelpThread(widget.threadId);
+
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  bool _validVideoLink(String value) {
+    final uri = Uri.tryParse(value.trim());
+
+    if (uri == null) return false;
+
+    return (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
+  }
+
+  Future<void> _sendReply() async {
+    final message = reply.text.trim();
+    final video = videoLink.text.trim();
+
+    if (message.isEmpty && video.isEmpty) return;
+
+    if (video.isNotEmpty && !_validVideoLink(video)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: I18nText(
+            'Please enter a valid http:// or https:// video link.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => sending = true);
+
+    try {
+      await service.sendHelpMessage(
+        threadId: widget.threadId,
+        senderId: widget.profile.id,
+        senderName: widget.profile.name,
+        senderRole: widget.profile.role,
+        message: message,
+        videoUrl: video,
+        learnerUid: (widget.thread['userId'] ?? '').toString(),
+      );
+
+      reply.clear();
+      videoLink.clear();
+
+      if (mounted) {
+        setState(() {
+          showVideoLink = false;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => sending = false);
+      }
+    }
   }
 
   Future<void> _followUp(int days) async {
@@ -776,10 +859,7 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
       ),
       actions: [
         LanguageToggle(userId: widget.profile.id),
-        TextButton(
-          onPressed: () => service.resolveHelpThread(widget.threadId),
-          child: const I18nText('Resolve'),
-        ),
+        TextButton(onPressed: _resolve, child: const I18nText('Resolve')),
       ],
     ),
     body: Column(
@@ -793,13 +873,16 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  if ((widget.thread['assignedTo'] ?? '').toString().isEmpty)
-                    FilledButton.tonal(
-                      onPressed: () => service.claimHelpThread(
-                        widget.threadId,
-                        widget.profile.name,
-                      ),
-                      child: const I18nText('CLAIM THIS'),
+                  if (assignedTo.isEmpty)
+                    FilledButton.tonalIcon(
+                      onPressed: _claim,
+                      icon: const Icon(Icons.person_add_alt_1),
+                      label: const I18nText('CLAIM THIS'),
+                    )
+                  else
+                    Chip(
+                      avatar: const Icon(Icons.person, size: 18),
+                      label: I18nText('Assigned: $assignedTo'),
                     ),
                   OutlinedButton.icon(
                     onPressed: () => _followUp(7),
@@ -815,11 +898,13 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                   final builtIns = <Map<String, String>>[
                     {
                       'title': 'Shorter session',
-                      'text': 'Try making the next session much shorter and finish while your dog is still keen.',
+                      'text':
+                          'Try making the next session much shorter and finish while your dog is still keen.',
                     },
                     {
                       'title': 'Another angle',
-                      'text': 'Could you send us another short video from the side so we can see the movement more clearly?',
+                      'text':
+                          'Could you send us another short video from the side so we can see the movement more clearly?',
                     },
                   ];
                   final saved = (snap.data?.docs ?? [])
@@ -892,7 +977,8 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                             (m['senderName'] ?? '').toString(),
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          Text((m['message'] ?? '').toString()),
+                          if ((m['message'] ?? '').toString().trim().isNotEmpty)
+                            Text((m['message'] ?? '').toString()),
                           if ((m['videoUrl'] ?? '').toString().isNotEmpty)
                             TextButton.icon(
                               onPressed: () async {
@@ -914,32 +1000,60 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: reply,
-                    maxLines: 2,
+                if (showVideoLink) ...[
+                  TextField(
+                    controller: videoLink,
+                    keyboardType: TextInputType.url,
                     decoration: const InputDecoration(
-                      label: I18nText('Reply to learner'),
+                      prefixIcon: Icon(Icons.link),
+                      label: I18nText('Optional video link'),
+                      hintText: 'https://',
                     ),
                   ),
+                  const SizedBox(height: 8),
+                ],
+                TextField(
+                  controller: reply,
+                  minLines: 1,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    label: I18nText('Reply to learner'),
+                  ),
                 ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: () async {
-                    if (reply.text.trim().isEmpty) return;
-                    await service.sendHelpMessage(
-                      threadId: widget.threadId,
-                      senderId: widget.profile.id,
-                      senderName: widget.profile.name,
-                      senderRole: widget.profile.role,
-                      message: reply.text,
-                      learnerUid: (widget.thread['userId'] ?? '').toString(),
-                    );
-                    reply.clear();
-                  },
-                  icon: const Icon(Icons.send),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: sending
+                          ? null
+                          : () =>
+                                setState(() => showVideoLink = !showVideoLink),
+                      icon: Icon(
+                        showVideoLink ? Icons.link_off : Icons.add_link,
+                      ),
+                      label: I18nText(
+                        showVideoLink ? 'HIDE VIDEO LINK' : 'ADD VIDEO LINK',
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: sending ? null : _sendReply,
+                      icon: sending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send),
+                      label: const I18nText('SEND REPLY'),
+                    ),
+                  ],
                 ),
               ],
             ),
