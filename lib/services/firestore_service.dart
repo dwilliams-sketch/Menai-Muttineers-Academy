@@ -633,41 +633,77 @@ class FirestoreService {
     required String learnerName,
     required String dogName,
   }) async {
-    await db.collection('submissions').add({
-      'userId': uid,
-      'dogId': dogId,
-      'learnerName': learnerName,
-      'dogName': dogName,
-      'moduleId': module.id,
-      'moduleTitle': module.title,
-      'trophyTitle': module.trophyTitle,
-      'artKey': module.artKey,
-      'videoUrl': videoUrl.trim(),
-      'storagePath': storagePath.trim(),
-      'videoSource': videoSource,
-      'videoSizeBytes': videoSizeBytes,
-      'videoArchived': false,
-      'videoArchiveRequested': false,
-      'note': note.trim(),
-      'status': 'waiting',
-      'feedback': '',
-      'reviewerName': '',
-      'assignedTo': '',
-      'submittedAt': FieldValue.serverTimestamp(),
-      'reviewedAt': null,
+    final cleanStoragePath = storagePath.trim();
+
+    // Academy uploads get a repeat-safe document ID based on the unique
+    // Storage object. If the learner taps/retries after the submission has
+    // already reached Firestore, we return the existing submission instead
+    // of creating a duplicate.
+    final submissionRef = cleanStoragePath.isNotEmpty
+        ? db
+              .collection('submissions')
+              .doc(
+                'video_${sha256.convert(utf8.encode(cleanStoragePath)).toString().substring(0, 24)}',
+              )
+        : db.collection('submissions').doc();
+
+    var created = false;
+
+    await db.runTransaction((tx) async {
+      final existing = await tx.get(submissionRef);
+
+      if (existing.exists) return;
+
+      tx.set(submissionRef, {
+        'userId': uid,
+        'dogId': dogId,
+        'learnerName': learnerName,
+        'dogName': dogName,
+        'moduleId': module.id,
+        'moduleTitle': module.title,
+        'trophyTitle': module.trophyTitle,
+        'artKey': module.artKey,
+        'videoUrl': videoUrl.trim(),
+        'storagePath': cleanStoragePath,
+        'videoSource': videoSource,
+        'videoSizeBytes': videoSizeBytes,
+        'videoArchived': false,
+        'videoArchiveRequested': false,
+        'note': note.trim(),
+        'status': 'waiting',
+        'feedback': '',
+        'reviewerName': '',
+        'assignedTo': '',
+        'submittedAt': FieldValue.serverTimestamp(),
+        'reviewedAt': null,
+      });
+
+      created = true;
     });
-    await _ensureAutomaticTrophy(
-      dogId: dogId,
-      id: 'first_assessment',
-      title: 'Brave Enough to Be Judged',
-      description: 'The first Academy skill assessment was submitted.',
-      artKey: 'assessment',
-    );
-    await notifyStaff(
-      title: '🎥 Assessment waiting',
-      body: '$learnerName & $dogName submitted ${module.title}.',
-      type: 'staff_assessment',
-    );
+
+    // A retry of the same uploaded video is already safely submitted.
+    if (!created) return;
+
+    // These are useful extras, but failure here must never make the learner
+    // think their successfully-saved assessment failed.
+    try {
+      await _ensureAutomaticTrophy(
+        dogId: dogId,
+        id: 'first_assessment',
+        title: 'Brave Enough to Be Judged',
+        description: 'The first Academy skill assessment was submitted.',
+        artKey: 'assessment',
+      );
+    } catch (_) {}
+
+    try {
+      await notifyStaff(
+        title: '🎥 Assessment waiting',
+        body: '$learnerName & $dogName submitted ${module.title}.',
+        type: 'staff_assessment',
+        targetId: submissionRef.id,
+      );
+    } catch (_) {}
   }
 
   Future<void> claimSubmission(String id, String trainerName) =>
@@ -1285,8 +1321,7 @@ class FirestoreService {
     await notifyUser(
       uid: uid,
       title: '⚓ Pause scheduled',
-      body:
-          'This dog will pause at the end of the current paid access period. You can cancel the pause before then.',
+      body: 'This dog will pause at the end of the current paid access period. You can cancel the pause before then.',
       type: 'account',
       targetId: dogId,
     );
@@ -1481,57 +1516,113 @@ class FirestoreService {
     required double amount,
     required String actor,
   }) async {
-    final config = await getAcademyConfig();
+    final paymentRef = db.collection('paymentRequests').doc(id);
     final userRef = db.collection('users').doc(uid);
-    final user = await userRef.get();
-    final data = user.data() ?? {};
-    final isInitial =
-        data['activated'] != true &&
-        ![
-          'paid',
-          'complimentary',
-        ].contains((data['paymentStatus'] ?? 'unpaid').toString());
+
     String? code;
-    var creditToAdd = amount;
-    if (isInitial) {
-      code = generateAccessCode();
-      await userRef.update({
-        'paymentStatus': 'paid',
-        'paymentMethod': 'Manual bank payment',
-        'accessCodeHash': hashAccessCode(code),
-      });
-      if (amount + 0.0001 < academyDoubloonPounds) {
+    var initialPayment = false;
+    var creditAdded = 0.0;
+
+    await db.runTransaction((tx) async {
+      final payment = await tx.get(paymentRef);
+
+      if (!payment.exists) {
+        throw StateError('This payment request could not be found.');
+      }
+
+      if ((payment.data()?['status'] ?? '').toString() != 'waiting') {
+        throw StateError('This payment has already been confirmed.');
+      }
+
+      final user = await tx.get(userRef);
+
+      if (!user.exists) {
+        throw StateError('The learner account could not be found.');
+      }
+
+      final data = user.data() ?? {};
+
+      initialPayment =
+          data['activated'] != true &&
+          ![
+            'paid',
+            'complimentary',
+          ].contains((data['paymentStatus'] ?? 'unpaid').toString());
+
+      if (initialPayment && amount + 0.0001 < academyDoubloonPounds) {
         throw StateError(
-          'The first payment must cover at least £${academyDoubloonPounds.toStringAsFixed(2)} for one $academyDoubloonAccessDays-day dog access period.',
+          'The first payment must cover at least £${academyDoubloonPounds.toStringAsFixed(2)}.',
         );
       }
-      // The first configured dog-access fee pays for the first dog's first voyage when the learner activates the code.
-      creditToAdd = max(0.0, amount - academyDoubloonPounds);
-    }
-    if (creditToAdd > 0) {
-      await addAcademyCredit(
-        uid: uid,
-        amount: creditToAdd,
-        actor: actor,
-        note: isInitial
-            ? 'Extra Doubloons after first dog access period'
-            : 'Payment confirmed',
-      );
-    }
-    await db.collection('paymentRequests').doc(id).update({
-      'status': 'confirmed',
-      'confirmedBy': actor,
-      'confirmedAt': FieldValue.serverTimestamp(),
+
+      if (initialPayment) {
+        code = generateAccessCode();
+
+        tx.update(userRef, {
+          'paymentStatus': 'paid',
+          'paymentMethod': 'Manual bank payment',
+          'accessCodeHash': hashAccessCode(code!),
+        });
+
+        creditAdded = max(0.0, amount - academyDoubloonPounds);
+      } else {
+        creditAdded = amount;
+      }
+
+      if (creditAdded > 0) {
+        final current = (data['academyCredit'] as num?)?.toDouble() ?? 0.0;
+
+        tx.update(userRef, {'academyCredit': current + creditAdded});
+
+        tx.set(userRef.collection('ledger').doc(), {
+          'type': 'credit',
+          'amount': creditAdded,
+          'description': initialPayment
+              ? 'Extra Doubloons after first dog access period'
+              : 'Payment confirmed',
+          'actor': actor,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      tx.update(paymentRef, {
+        'status': 'confirmed',
+        'confirmedBy': actor,
+        'confirmedAt': FieldValue.serverTimestamp(),
+      });
     });
-    if (isInitial) {
-      await notifyUser(
-        uid: uid,
-        title: '✅ Payment confirmed',
-        body:
-            'Your first Academy access is ready. Enter the activation code sent by the Captain/Admin.',
-        type: 'account',
+
+    // Notifications must not make an already-confirmed payment look failed.
+    try {
+      if (initialPayment) {
+        await notifyUser(
+          uid: uid,
+          title: '✅ Payment confirmed',
+          body: 'Your first Academy access is ready. Enter the activation code sent by the Captain/Admin.',
+          type: 'account',
+        );
+      } else if (creditAdded > 0) {
+        final doubloons = poundsToDoubloons(creditAdded);
+
+        await notifyUser(
+          uid: uid,
+          title: '🪙 Payment confirmed',
+          body:
+              '${formatDoubloonNumber(doubloons)} ${doubloons == 1 ? 'Doubloon has' : 'Doubloons have'} been added to your Academy balance.',
+          type: 'account',
+        );
+      }
+    } catch (_) {}
+
+    try {
+      await _audit(
+        'Payment confirmed',
+        uid,
+        '£${amount.toStringAsFixed(2)}',
+        actor,
       );
-    }
+    } catch (_) {}
+
     return code;
   }
 

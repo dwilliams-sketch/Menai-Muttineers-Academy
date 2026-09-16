@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
@@ -334,8 +335,57 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   final service = FirestoreService();
   final push = PushService();
+
   String? touchedUid;
   String? languageSyncedUid;
+  String? pushRegistrationKey;
+
+  StreamSubscription<RemoteMessage>? _foregroundPushSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _foregroundPushSubscription = FirebaseMessaging.onMessage.listen((message) {
+      if (!mounted) return;
+
+      final notification = message.notification;
+      final title = notification?.title ?? 'Menai Muttineers Academy';
+      final body = notification?.body ?? '';
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        if (messenger == null) return;
+
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              duration: const Duration(seconds: 6),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  if (body.isNotEmpty) Text(body),
+                ],
+              ),
+            ),
+          );
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _foregroundPushSubscription?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -349,6 +399,8 @@ class _AuthGateState extends State<AuthGate> {
         final user = authSnap.data;
         if (user == null) {
           languageSyncedUid = null;
+          touchedUid = null;
+          pushRegistrationKey = null;
           return const AuthScreen();
         }
         return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -625,10 +626,30 @@ class _StaffTasksState extends State<StaffTasks> {
   );
 }
 
-class ReviewQueue extends StatelessWidget {
+class ReviewQueue extends StatefulWidget {
   final AppUser profile;
-  ReviewQueue({super.key, required this.profile});
+
+  const ReviewQueue({super.key, required this.profile});
+
+  @override
+  State<ReviewQueue> createState() => _ReviewQueueState();
+}
+
+class _ReviewQueueState extends State<ReviewQueue> {
   final service = FirestoreService();
+  bool showReviewed = false;
+
+  String _dateTime(Timestamp? value) {
+    if (value == null) return '';
+
+    final d = value.toDate().toLocal();
+
+    String two(int v) => v.toString().padLeft(2, '0');
+
+    return '${two(d.day)}/${two(d.month)}/${d.year} '
+        '${two(d.hour)}:${two(d.minute)}';
+  }
+
   Future<void> review(
     BuildContext context,
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
@@ -636,6 +657,7 @@ class ReviewQueue extends StatelessWidget {
   ) async {
     final feedback = TextEditingController();
     final m = doc.data();
+
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -644,38 +666,42 @@ class ReviewQueue extends StatelessWidget {
         ),
         content: SizedBox(
           width: 520,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              I18nText(
-                '${m['learnerName']} & ${m['dogName']} — ${m['moduleTitle']}',
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                children:
-                    [
-                          'Great progress.',
-                          'Please send another side-on video.',
-                          'Keep this short and reward the return.',
-                        ]
-                        .map(
-                          (e) => ActionChip(
-                            label: I18nText(e),
-                            onPressed: () => feedback.text = e,
-                          ),
-                        )
-                        .toList(),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: feedback,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  label: I18nText('Trainer feedback'),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                I18nText(
+                  '${m['learnerName']} & ${m['dogName']} — ${m['moduleTitle']}',
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children:
+                      [
+                            'Great progress.',
+                            'Please send another side-on video.',
+                            'Keep this short and reward the return.',
+                          ]
+                          .map(
+                            (e) => ActionChip(
+                              label: I18nText(e),
+                              onPressed: () => feedback.text = e,
+                            ),
+                          )
+                          .toList(),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: feedback,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    label: I18nText('Trainer feedback'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -690,7 +716,8 @@ class ReviewQueue extends StatelessWidget {
         ],
       ),
     );
-    if (ok == true)
+
+    if (ok == true) {
       await service.reviewSubmission(
         submissionId: doc.id,
         dogId: m['dogId'] ?? '',
@@ -698,160 +725,414 @@ class ReviewQueue extends StatelessWidget {
         trophyTitle: m['trophyTitle'] ?? 'Achievement',
         moduleTitle: m['moduleTitle'] ?? 'Skill',
         artKey: m['artKey'] ?? 'firstskill',
-        reviewerName: profile.name,
+        reviewerName: widget.profile.name,
         feedback: feedback.text,
         passed: passed,
       );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: I18nText(
+              passed
+                  ? 'Assessment passed and saved in Reviewed.'
+                  : 'Feedback sent and assessment saved in Reviewed.',
+            ),
+          ),
+        );
+      }
+    }
+
     feedback.dispose();
   }
 
-  @override
-  Widget build(
-    BuildContext context,
-  ) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: service.allSubmissions(),
-    builder: (context, snap) {
-      final docs = (snap.data?.docs ?? [])
-          .where((d) => d.data()['status'] == 'waiting')
-          .toList();
-      if (docs.isEmpty)
-        return const Card(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: I18nText('Assessment inbox zero! 🎉'),
+  Future<void> _openOriginal(
+    BuildContext context, {
+    required String storagePath,
+    required String fallbackUrl,
+  }) async {
+    final resolved = await _resolveAcademyVideoUrl(
+      storagePath: storagePath,
+      fallbackUrl: fallbackUrl,
+    );
+
+    if (!context.mounted) return;
+
+    if (resolved == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: I18nText(
+            'The Academy could not obtain access to this video.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final uri = Uri.tryParse(resolved);
+
+    if (uri == null || !await launchUrl(uri)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: I18nText('The original video could not be opened.'),
           ),
         );
-      return Column(
-        children: docs.map((d) {
-          final m = d.data();
-          final assigned = (m['assignedTo'] ?? '').toString();
-          final videoUrl = (m['videoUrl'] ?? '').toString();
-          final academyUpload =
-              videoUrl.isNotEmpty &&
-              (m['videoSource'] ?? '').toString() == 'academy_upload';
-          final keepForRecords = m['videoArchiveRequested'] == true;
-          final safelyArchived = m['videoArchived'] == true;
+      }
+    }
+  }
 
-          return Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+  Future<void> _deleteVideoNow(
+    BuildContext context,
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final m = doc.data();
+    final storagePath = (m['storagePath'] ?? '').toString().trim();
+
+    if (storagePath.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: I18nText('There is no Academy video file to delete.'),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const I18nText('Delete this video now?'),
+        content: const I18nText(
+          'Use this for a wrong, duplicate or private upload. '
+          'This permanently removes the Academy copy of the video. '
+          'The assessment record and trainer feedback will remain.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const I18nText('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.delete_forever),
+            label: const I18nText('DELETE VIDEO'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await FirebaseStorage.instance.ref(storagePath).delete();
+
+      await service.db.collection('submissions').doc(doc.id).update({
+        'videoUrl': '',
+        'storagePath': '',
+        'videoSource': 'deleted',
+        'videoSizeBytes': 0,
+        'videoArchiveRequested': false,
+        'videoArchived': false,
+        'videoDeletedAt': FieldValue.serverTimestamp(),
+        'videoDeletedBy': widget.profile.name,
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: I18nText(
+              'Video deleted. The assessment record has been kept.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: I18nText(
+              'The video could not be deleted. Nothing was removed from the assessment record.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _submissionCard(
+    BuildContext context,
+    QueryDocumentSnapshot<Map<String, dynamic>> d,
+  ) {
+    final m = d.data();
+
+    final status = (m['status'] ?? 'waiting').toString();
+    final assigned = (m['assignedTo'] ?? '').toString();
+    final videoUrl = (m['videoUrl'] ?? '').toString();
+    final storagePath = (m['storagePath'] ?? '').toString();
+
+    final academyUpload =
+        (m['videoSource'] ?? '').toString() == 'academy_upload' &&
+        (videoUrl.isNotEmpty || storagePath.isNotEmpty);
+
+    final keepForRecords = m['videoArchiveRequested'] == true;
+    final safelyArchived = m['videoArchived'] == true;
+
+    final reviewed = status != 'waiting';
+    final passed = status == 'passed';
+
+    final canDeleteVideo = widget.profile.isAdmin || widget.profile.isCaptain;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            I18nText(
+              '${m['learnerName']} & ${m['dogName']} — ${m['moduleTitle']}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+
+            if (reviewed) ...[
+              const SizedBox(height: 5),
+              Row(
                 children: [
-                  I18nText(
-                    '${m['learnerName']} & ${m['dogName']} — ${m['moduleTitle']}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  Icon(
+                    passed ? Icons.check_circle : Icons.replay_circle_filled,
+                    size: 20,
                   ),
-                  if (assigned.isNotEmpty) I18nText('Assigned: $assigned'),
-                  if ((m['note'] ?? '').toString().isNotEmpty)
-                    I18nText('Learner note: ${m['note']}'),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 7,
-                    runSpacing: 7,
-                    children: [
-                      if (videoUrl.isNotEmpty && academyUpload)
-                        FilledButton.tonalIcon(
-                          onPressed: () => _watchAcademyVideo(
-                            context,
-                            url: videoUrl,
-                            title: (m['moduleTitle'] ?? 'Video').toString(),
-                          ),
-                          icon: const Icon(Icons.play_circle),
-                          label: const I18nText('Watch in app'),
-                        )
-                      else if (videoUrl.isNotEmpty)
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            final u = Uri.tryParse(videoUrl);
-                            if (u != null) await launchUrl(u);
-                          },
-                          icon: const Icon(Icons.open_in_new),
-                          label: const I18nText('Open video'),
-                        ),
-                      if (academyUpload)
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            final u = Uri.tryParse(videoUrl);
-                            if (u != null) await launchUrl(u);
-                          },
-                          icon: const Icon(Icons.open_in_new),
-                          label: const I18nText('Download / open original'),
-                        ),
-                      if (academyUpload && !safelyArchived)
-                        OutlinedButton.icon(
-                          onPressed: () =>
-                              service.setSubmissionVideoArchiveRequested(
-                                d.id,
-                                !keepForRecords,
-                              ),
-                          icon: Icon(
-                            keepForRecords
-                                ? Icons.bookmark
-                                : Icons.bookmark_border,
-                          ),
-                          label: I18nText(
-                            keepForRecords
-                                ? 'Kept for records'
-                                : 'Keep for records',
-                          ),
-                        ),
-                      if (academyUpload && keepForRecords && !safelyArchived)
-                        FilledButton.tonalIcon(
-                          onPressed: () async {
-                            final archiveUrl = await _confirmVideoArchived(
-                              context,
-                            );
-
-                            if (archiveUrl == null) return;
-
-                            await service.markSubmissionVideoArchived(
-                              d.id,
-                              archiveUrl: archiveUrl,
-                            );
-
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: I18nText(
-                                    'Video marked safely archived.',
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.inventory_2),
-                          label: const I18nText('MARK SAFELY ARCHIVED'),
-                        ),
-                      if (safelyArchived)
-                        const Chip(
-                          avatar: Icon(Icons.verified, size: 18),
-                          label: I18nText('Safely archived'),
-                        ),
-                      if (assigned.isEmpty)
-                        OutlinedButton(
-                          onPressed: () =>
-                              service.claimSubmission(d.id, profile.name),
-                          child: const I18nText('CLAIM THIS'),
-                        ),
-                      FilledButton.icon(
-                        onPressed: () => review(context, d, true),
-                        icon: const Icon(Icons.emoji_events),
-                        label: const I18nText('PASS'),
-                      ),
-                      OutlinedButton(
-                        onPressed: () => review(context, d, false),
-                        child: const I18nText('KEEP PRACTISING'),
-                      ),
-                    ],
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: I18nText(
+                      passed ? 'PASSED' : 'KEEP PRACTISING',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
+              if ((m['reviewerName'] ?? '').toString().isNotEmpty)
+                I18nText('Reviewed by: ${m['reviewerName']}'),
+              if (m['reviewedAt'] is Timestamp)
+                I18nText(
+                  'Reviewed: ${_dateTime(m['reviewedAt'] as Timestamp?)}',
+                ),
+              if ((m['feedback'] ?? '').toString().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: I18nText('Trainer feedback: ${m['feedback']}'),
+                ),
+            ] else ...[
+              if (assigned.isNotEmpty) I18nText('Assigned: $assigned'),
+              if (m['submittedAt'] is Timestamp)
+                I18nText(
+                  'Submitted: ${_dateTime(m['submittedAt'] as Timestamp?)}',
+                ),
+            ],
+
+            if ((m['note'] ?? '').toString().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 5),
+                child: I18nText('Learner note: ${m['note']}'),
+              ),
+
+            if ((m['videoSource'] ?? '').toString() == 'deleted')
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: I18nText(
+                  'Academy video deleted — assessment record retained.',
+                ),
+              ),
+
+            const SizedBox(height: 8),
+
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: [
+                if (academyUpload)
+                  FilledButton.tonalIcon(
+                    onPressed: () => _watchAcademyVideo(
+                      context,
+                      url: videoUrl,
+                      storagePath: storagePath,
+                      title: (m['moduleTitle'] ?? 'Video').toString(),
+                    ),
+                    icon: const Icon(Icons.play_circle),
+                    label: const I18nText('Watch in app'),
+                  )
+                else if (videoUrl.isNotEmpty)
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final u = Uri.tryParse(videoUrl);
+
+                      if (u != null) {
+                        await launchUrl(u);
+                      }
+                    },
+                    icon: const Icon(Icons.open_in_new),
+                    label: const I18nText('Open video'),
+                  ),
+
+                if (academyUpload)
+                  OutlinedButton.icon(
+                    onPressed: () => _openOriginal(
+                      context,
+                      storagePath: storagePath,
+                      fallbackUrl: videoUrl,
+                    ),
+                    icon: const Icon(Icons.open_in_new),
+                    label: const I18nText('Download / open original'),
+                  ),
+
+                if (academyUpload && !safelyArchived)
+                  OutlinedButton.icon(
+                    onPressed: () => service.setSubmissionVideoArchiveRequested(
+                      d.id,
+                      !keepForRecords,
+                    ),
+                    icon: Icon(
+                      keepForRecords ? Icons.bookmark : Icons.bookmark_border,
+                    ),
+                    label: I18nText(
+                      keepForRecords ? 'Kept for records' : 'Keep for records',
+                    ),
+                  ),
+
+                if (academyUpload && keepForRecords && !safelyArchived)
+                  FilledButton.tonalIcon(
+                    onPressed: () async {
+                      final archiveUrl = await _confirmVideoArchived(context);
+
+                      if (archiveUrl == null) return;
+
+                      await service.markSubmissionVideoArchived(
+                        d.id,
+                        archiveUrl: archiveUrl,
+                      );
+
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: I18nText('Video marked safely archived.'),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.inventory_2),
+                    label: const I18nText('MARK SAFELY ARCHIVED'),
+                  ),
+
+                if (safelyArchived)
+                  const Chip(
+                    avatar: Icon(Icons.verified, size: 18),
+                    label: I18nText('Safely archived'),
+                  ),
+
+                if (academyUpload && canDeleteVideo)
+                  OutlinedButton.icon(
+                    onPressed: () => _deleteVideoNow(context, d),
+                    icon: const Icon(Icons.delete_forever),
+                    label: const I18nText('DELETE VIDEO NOW'),
+                  ),
+
+                if (!reviewed && assigned.isEmpty)
+                  OutlinedButton(
+                    onPressed: () =>
+                        service.claimSubmission(d.id, widget.profile.name),
+                    child: const I18nText('CLAIM THIS'),
+                  ),
+
+                if (!reviewed)
+                  FilledButton.icon(
+                    onPressed: () => review(context, d, true),
+                    icon: const Icon(Icons.emoji_events),
+                    label: const I18nText('PASS'),
+                  ),
+
+                if (!reviewed)
+                  OutlinedButton(
+                    onPressed: () => review(context, d, false),
+                    child: const I18nText('KEEP PRACTISING'),
+                  ),
+              ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment<bool>(
+              value: false,
+              icon: Icon(Icons.inbox_outlined),
+              label: I18nText('AWAITING'),
+            ),
+            ButtonSegment<bool>(
+              value: true,
+              icon: Icon(Icons.history),
+              label: I18nText('REVIEWED'),
+            ),
+          ],
+          selected: {showReviewed},
+          onSelectionChanged: (selection) {
+            setState(() => showReviewed = selection.first);
+          },
+        ),
+      ),
+
+      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: service.allSubmissions(),
+        builder: (context, snap) {
+          final docs = (snap.data?.docs ?? []).where((d) {
+            final reviewed = (d.data()['status'] ?? 'waiting') != 'waiting';
+
+            return showReviewed ? reviewed : !reviewed;
+          }).toList();
+
+          docs.sort((a, b) {
+            final aData = a.data();
+            final bData = b.data();
+
+            final aTs =
+                (showReviewed ? aData['reviewedAt'] : aData['submittedAt'])
+                    as Timestamp?;
+
+            final bTs =
+                (showReviewed ? bData['reviewedAt'] : bData['submittedAt'])
+                    as Timestamp?;
+
+            final aMs = aTs?.millisecondsSinceEpoch ?? 0;
+            final bMs = bTs?.millisecondsSinceEpoch ?? 0;
+
+            return showReviewed ? bMs.compareTo(aMs) : aMs.compareTo(bMs);
+          });
+
+          if (docs.isEmpty) {
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: I18nText(
+                  showReviewed
+                      ? 'No reviewed assessments yet.'
+                      : 'Assessment inbox zero! 🎉',
+                ),
+              ),
+            );
+          }
+
+          return Column(
+            children: docs.map((d) => _submissionCard(context, d)).toList(),
           );
-        }).toList(),
-      );
-    },
+        },
+      ),
+    ],
   );
 }
 
@@ -1020,12 +1301,55 @@ Future<String?> _confirmVideoArchived(BuildContext context) async {
   return result;
 }
 
+Future<String?> _resolveAcademyVideoUrl({
+  required String storagePath,
+  required String fallbackUrl,
+}) async {
+  final path = storagePath.trim();
+
+  if (path.isNotEmpty && path.startsWith('academyVideos/')) {
+    try {
+      return await FirebaseStorage.instance.ref(path).getDownloadURL();
+    } catch (_) {
+      // Fall through to the previously-saved URL.
+    }
+  }
+
+  final cleanFallback = fallbackUrl.trim();
+  final uri = Uri.tryParse(cleanFallback);
+
+  if (uri != null && (uri.scheme == 'https' || uri.scheme == 'http')) {
+    return cleanFallback;
+  }
+
+  return null;
+}
+
 Future<void> _watchAcademyVideo(
   BuildContext context, {
   required String url,
+  required String storagePath,
   required String title,
 }) async {
-  final uri = Uri.tryParse(url);
+  final resolvedUrl = await _resolveAcademyVideoUrl(
+    storagePath: storagePath,
+    fallbackUrl: url,
+  );
+
+  if (!context.mounted) return;
+
+  if (resolvedUrl == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: I18nText(
+          'The video exists, but the Academy could not obtain access to it.',
+        ),
+      ),
+    );
+    return;
+  }
+
+  final uri = Uri.tryParse(resolvedUrl);
 
   if (uri == null) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1038,16 +1362,29 @@ Future<void> _watchAcademyVideo(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: I18nText(title),
-      content: SizedBox(width: 720, child: _AcademyVideoPlayer(url: url)),
+      content: SizedBox(
+        width: 720,
+        child: _AcademyVideoPlayer(url: resolvedUrl),
+      ),
       actions: [
         TextButton.icon(
-          onPressed: () => launchUrl(uri),
+          onPressed: () async {
+            final opened = await launchUrl(uri);
+
+            if (!opened && dialogContext.mounted) {
+              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                const SnackBar(
+                  content: I18nText('The original video could not be opened.'),
+                ),
+              );
+            }
+          },
           icon: const Icon(Icons.open_in_new),
           label: const I18nText('Download / open original'),
         ),
-        TextButton(
+        FilledButton(
           onPressed: () => Navigator.pop(dialogContext),
-          child: const I18nText('Cancel'),
+          child: const I18nText('Close'),
         ),
       ],
     ),
@@ -1180,6 +1517,7 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
   final service = FirestoreService();
   final reply = TextEditingController();
   final videoLink = TextEditingController();
+  final scroll = ScrollController();
   final stt.SpeechToText speech = stt.SpeechToText();
 
   late String assignedTo;
@@ -1202,6 +1540,7 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
     }
     reply.dispose();
     videoLink.dispose();
+    scroll.dispose();
     super.dispose();
   }
 
@@ -1313,6 +1652,17 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
     }
   }
 
+  void _scrollToLatest() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!scroll.hasClients) return;
+      scroll.animateTo(
+        scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
   Future<void> _sendReply() async {
     final message = reply.text.trim();
     final video = videoLink.text.trim();
@@ -1347,9 +1697,16 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
       videoLink.clear();
 
       if (mounted) {
+        FocusScope.of(context).unfocus();
+
         setState(() {
           showVideoLink = false;
         });
+
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: I18nText('Message sent.')));
+
+        _scrollToLatest();
       }
     } finally {
       if (mounted) {
@@ -1472,15 +1829,27 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                                 0,
                           ),
                 );
+              _scrollToLatest();
+
               return ListView(
+                controller: scroll,
                 padding: const EdgeInsets.all(12),
                 children: docs.map((d) {
                   final m = d.data();
                   final staff = (m['senderRole'] ?? '') != 'learner';
                   final videoUrl = (m['videoUrl'] ?? '').toString();
+                  final storagePath = (m['storagePath'] ?? '').toString();
                   final academyUpload =
-                      videoUrl.isNotEmpty &&
-                      (m['videoSource'] ?? '').toString() == 'academy_upload';
+                      (m['videoSource'] ?? '').toString() == 'academy_upload' &&
+                      (videoUrl.isNotEmpty || storagePath.isNotEmpty);
+
+                  final scheme = Theme.of(context).colorScheme;
+                  final bubbleColour = staff
+                      ? scheme.primary
+                      : scheme.surfaceContainerHighest;
+                  final bubbleTextColour = staff
+                      ? scheme.onPrimary
+                      : scheme.onSurface;
                   final keepForRecords = m['videoArchiveRequested'] == true;
                   final safelyArchived = m['videoArchived'] == true;
 
@@ -1493,20 +1862,29 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                       padding: const EdgeInsets.all(12),
                       constraints: const BoxConstraints(maxWidth: 560),
                       decoration: BoxDecoration(
-                        color: staff
-                            ? Theme.of(context).colorScheme.primaryContainer
-                            : Theme.of(context).colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(14),
+                        color: bubbleColour,
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(18),
+                          topRight: const Radius.circular(18),
+                          bottomLeft: Radius.circular(staff ? 18 : 4),
+                          bottomRight: Radius.circular(staff ? 4 : 18),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             (m['senderName'] ?? '').toString(),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: bubbleTextColour,
+                            ),
                           ),
                           if ((m['message'] ?? '').toString().trim().isNotEmpty)
-                            Text((m['message'] ?? '').toString()),
+                            Text(
+                              (m['message'] ?? '').toString(),
+                              style: TextStyle(color: bubbleTextColour),
+                            ),
                           if (videoUrl.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 6),
@@ -1519,6 +1897,7 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                                       onPressed: () => _watchAcademyVideo(
                                         context,
                                         url: videoUrl,
+                                        storagePath: storagePath,
                                         title:
                                             (widget.thread['lessonTitle'] ??
                                                     'Video')
@@ -1539,8 +1918,30 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                                   if (academyUpload)
                                     TextButton.icon(
                                       onPressed: () async {
-                                        final u = Uri.tryParse(videoUrl);
-                                        if (u != null) await launchUrl(u);
+                                        final resolved =
+                                            await _resolveAcademyVideoUrl(
+                                              storagePath: storagePath,
+                                              fallbackUrl: videoUrl,
+                                            );
+
+                                        if (!context.mounted) return;
+
+                                        final u = resolved == null
+                                            ? null
+                                            : Uri.tryParse(resolved);
+
+                                        if (u == null || !await launchUrl(u)) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                                  const SnackBar(
+                                                    content: I18nText(
+                                                      'The original video could not be opened.',
+                                                    ),
+                                                  ),
+                                                );
+                                          }
+                                        }
                                       },
                                       icon: const Icon(Icons.open_in_new),
                                       label: const I18nText(
@@ -1907,6 +2308,8 @@ class OneToOneQueue extends StatelessWidget {
   );
 }
 
+final Set<String> _paymentConfirmationsInFlight = <String>{};
+
 class AccountQueue extends StatelessWidget {
   final AppUser profile;
   AccountQueue({super.key, required this.profile});
@@ -1916,43 +2319,80 @@ class AccountQueue extends StatelessWidget {
     BuildContext context,
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) async {
+    if (_paymentConfirmationsInFlight.contains(doc.id)) return;
+
+    _paymentConfirmationsInFlight.add(doc.id);
+
     final m = doc.data();
     final amount = (m['amount'] as num?)?.toDouble() ?? 0;
-    final code = await service.confirmPaymentRequest(
-      id: doc.id,
-      uid: (m['userId'] ?? '').toString(),
-      amount: amount,
-      actor: profile.name,
-    );
-    if (code != null && context.mounted) {
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const I18nText('First payment confirmed'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const I18nText('Send this activation code to the learner:'),
-              const SizedBox(height: 8),
-              SelectableText(
-                code,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 8),
-              const I18nText(
-                'The first £5 payment has opened the first 30-day voyage. Any extra full or part balance has been added as Doubloons.',
+
+    try {
+      final code = await service.confirmPaymentRequest(
+        id: doc.id,
+        uid: (m['userId'] ?? '').toString(),
+        amount: amount,
+        actor: profile.name,
+      );
+
+      if (!context.mounted) return;
+
+      if (code != null) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const I18nText('First payment confirmed'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const I18nText('✅ Payment confirmed successfully.'),
+                const SizedBox(height: 10),
+                const I18nText('Send this activation code to the learner:'),
+                const SizedBox(height: 8),
+                SelectableText(
+                  code,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 8),
+                const I18nText(
+                  'The first £5 payment has opened the first 30-day voyage. Any extra full or part balance has been added as Doubloons.',
+                ),
+              ],
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const I18nText('Done'),
               ),
             ],
           ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const I18nText('Done'),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: I18nText(
+              '✅ Payment confirmed — £${amount.toStringAsFixed(2)} added successfully.',
             ),
-          ],
+          ),
+        );
+      }
+    } on StateError catch (error) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: I18nText(error.message.toString())));
+    } catch (_) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: I18nText(
+            'Payment could not be confirmed. Nothing has been added twice.',
+          ),
         ),
       );
+    } finally {
+      _paymentConfirmationsInFlight.remove(doc.id);
     }
   }
 
@@ -2182,6 +2622,7 @@ class DogDirectory extends StatefulWidget {
 class _DogDirectoryState extends State<DogDirectory> {
   final service = FirestoreService();
   String q = '';
+  bool watchOnly = false;
 
   Future<void> _adjustDoubloons(
     BuildContext context,
@@ -2454,6 +2895,12 @@ class _DogDirectoryState extends State<DogDirectory> {
             uSnap.data!.docs.where((u) {
               final m = u.data();
               final dogs = dogsByOwner[u.id] ?? const [];
+
+              if (watchOnly &&
+                  !dogs.any((d) => d.data()['watchList'] == true)) {
+                return false;
+              }
+
               if (needle.isEmpty) return true;
               return (m['name'] ?? '').toString().toLowerCase().contains(
                     needle,
@@ -2490,6 +2937,18 @@ class _DogDirectoryState extends State<DogDirectory> {
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search),
                 label: I18nText('Search dog, learner or email'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilterChip(
+                selected: watchOnly,
+                avatar: const Icon(Icons.visibility, size: 18),
+                label: const I18nText('WATCH LIST ONLY'),
+                onSelected: (value) {
+                  setState(() => watchOnly = value);
+                },
               ),
             ),
             const SizedBox(height: 10),
@@ -3002,218 +3461,396 @@ class DogSnapshot extends StatelessWidget {
     }
   }
 
+  String _snapshotDate(dynamic value) {
+    if (value is! Timestamp) return '';
+    final d = value.toDate().toLocal();
+
+    String two(int v) => v.toString().padLeft(2, '0');
+
+    return '${two(d.day)}/${two(d.month)}/${d.year} '
+        '${two(d.hour)}:${two(d.minute)}';
+  }
+
   @override
-  Widget build(BuildContext context) {
-    final rawStatus = (dog['academyStatus'] ?? '').toString();
-    final legacy = rawStatus.isEmpty && owner['activated'] == true;
-    final status = rawStatus.isEmpty
-        ? (owner['activated'] == true ? 'legacy active' : 'awaiting')
-        : rawStatus;
-    return Scaffold(
-      appBar: AppBar(
-        title: I18nText('${dog['name'] ?? 'Dog'} — Dog Snapshot'),
-        actions: [LanguageToggle(userId: profile.id)],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: Padding(
+  Widget build(
+    BuildContext context,
+  ) => StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+    stream: service.db.collection('dogs').doc(dogId).snapshots(),
+    builder: (context, dogSnap) {
+      final liveDog = dogSnap.data?.data() ?? dog;
+
+      return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: service.userStream(ownerId),
+        builder: (context, ownerSnap) {
+          final liveOwner = ownerSnap.data?.data() ?? owner;
+
+          final rawStatus = (liveDog['academyStatus'] ?? '').toString();
+
+          final legacy = rawStatus.isEmpty && liveOwner['activated'] == true;
+
+          final status = rawStatus.isEmpty
+              ? (liveOwner['activated'] == true ? 'legacy active' : 'awaiting')
+              : rawStatus;
+
+          final credit = (liveOwner['academyCredit'] as num?)?.toDouble() ?? 0;
+
+          return Scaffold(
+            appBar: AppBar(
+              title: I18nText('${liveDog['name'] ?? 'Dog'} — Dog Snapshot'),
+              actions: [LanguageToggle(userId: profile.id)],
+            ),
+            body: ListView(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  I18nText(
-                    '${dog['name']} & ${owner['name']}',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  I18nText('${owner['email'] ?? ''} • ${owner['phone'] ?? ''}'),
-                  I18nText(
-                    'Breed: ${dog['breed'] ?? ''} • DOB: ${dog['dateOfBirth'] ?? 'Not set'}',
-                  ),
-                  I18nText('Academy status: ${status.toUpperCase()}'),
-                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                    stream: service.userStream(ownerId),
-                    builder: (context, snap) {
-                      final credit =
-                          (snap.data?.data()?['academyCredit'] as num?)
-                              ?.toDouble() ??
-                          ((owner['academyCredit'] as num?)?.toDouble() ?? 0);
-                      return I18nText(
-                        'Doubloon balance: ${doubloonBalanceLabel(credit)}',
-                      );
-                    },
-                  ),
-                  if (profile.canManageAccounts)
-                    StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                      stream: service.userStream(ownerId),
-                      builder: (context, snap) {
-                        final data = snap.data?.data() ?? owner;
-                        final role = (data['role'] ?? 'learner').toString();
-                        final value =
-                            [
-                              'learner',
-                              'trainer',
-                              'admin',
-                              'captain',
-                            ].contains(role)
-                            ? role
-                            : 'learner';
-                        return Row(
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        I18nText(
+                          '${liveDog['name']} & ${liveOwner['name']}',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        I18nText(
+                          '${liveOwner['email'] ?? ''} • '
+                          '${liveOwner['phone'] ?? ''}',
+                        ),
+                        I18nText(
+                          'Breed: ${liveDog['breed'] ?? ''} • '
+                          'DOB: ${liveDog['dateOfBirth'] ?? 'Not set'}',
+                        ),
+                        I18nText('Academy status: ${status.toUpperCase()}'),
+                        I18nText(
+                          'Doubloon balance: '
+                          '${doubloonBalanceLabel(credit)}',
+                        ),
+
+                        if ((liveDog['experience'] ?? '').toString().isNotEmpty)
+                          I18nText('Experience: ${liveDog['experience']}'),
+
+                        if ((liveDog['notes'] ?? '').toString().isNotEmpty)
+                          I18nText('Learner notes: ${liveDog['notes']}'),
+
+                        if (liveDog['accessUntil'] is Timestamp)
+                          I18nText(
+                            'Access until: '
+                            '${_snapshotDate(liveDog['accessUntil'])}',
+                          ),
+
+                        if (liveDog['watchList'] == true)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Chip(
+                              avatar: Icon(Icons.visibility, size: 18),
+                              label: I18nText('ON STAFF WATCH LIST'),
+                            ),
+                          ),
+
+                        if (profile.canManageAccounts) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Expanded(child: I18nText('Academy role')),
+                              DropdownButton<String>(
+                                value:
+                                    [
+                                      'learner',
+                                      'trainer',
+                                      'admin',
+                                      'captain',
+                                    ].contains(
+                                      (liveOwner['role'] ?? 'learner')
+                                          .toString(),
+                                    )
+                                    ? (liveOwner['role'] ?? 'learner')
+                                          .toString()
+                                    : 'learner',
+                                items:
+                                    ['learner', 'trainer', 'admin', 'captain']
+                                        .map(
+                                          (r) => DropdownMenuItem<String>(
+                                            value: r,
+                                            child: I18nText(r.toUpperCase()),
+                                          ),
+                                        )
+                                        .toList(),
+                                onChanged: (v) {
+                                  if (v != null) {
+                                    service.setUserRole(
+                                      ownerId,
+                                      v,
+                                      actor: profile.name,
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+
+                        const SizedBox(height: 10),
+
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
-                            const Expanded(child: I18nText('Academy role')),
-                            DropdownButton<String>(
-                              value: value,
-                              items: ['learner', 'trainer', 'admin', 'captain']
-                                  .map(
-                                    (r) => DropdownMenuItem(
-                                      value: r,
-                                      child: I18nText(r.toUpperCase()),
+                            OutlinedButton.icon(
+                              onPressed: () => note(context),
+                              icon: const Icon(Icons.note_add),
+                              label: const I18nText('STAFF NOTE'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () => _recommendSkill(context),
+                              icon: const Icon(Icons.assistant_direction),
+                              label: const I18nText('RECOMMEND SKILL'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                final next = liveDog['watchList'] != true;
+
+                                await service.updateDog(dogId, {
+                                  'watchList': next,
+                                });
+
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: I18nText(
+                                        next
+                                            ? 'Dog added to the staff Watch List.'
+                                            : 'Dog removed from the staff Watch List.',
+                                      ),
                                     ),
-                                  )
-                                  .toList(),
-                              onChanged: (v) {
-                                if (v != null)
-                                  service.setUserRole(
-                                    ownerId,
-                                    v,
+                                  );
+                                }
+                              },
+                              icon: Icon(
+                                liveDog['watchList'] == true
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                              label: I18nText(
+                                liveDog['watchList'] == true
+                                    ? 'REMOVE WATCH'
+                                    : 'WATCH LIST',
+                              ),
+                            ),
+                            if (profile.canManageAccounts)
+                              FilledButton.tonalIcon(
+                                onPressed: () => adjustDoubloons(context),
+                                icon: const Icon(
+                                  Icons.monetization_on_outlined,
+                                ),
+                                label: const I18nText('ADJUST DOUBLOONS'),
+                              ),
+                            if (legacy && profile.canManageAccounts)
+                              FilledButton.icon(
+                                onPressed: () async {
+                                  await service.migrateLegacyDog(
+                                    dogId: dogId,
+                                    uid: ownerId,
                                     actor: profile.name,
                                   );
-                              },
-                            ),
+
+                                  if (!context.mounted) return;
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: I18nText(
+                                        '${liveDog['name'] ?? 'Dog'} '
+                                        'is now ACTIVE in V1.4.',
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.upgrade),
+                                label: const I18nText('START V1.4 ACCESS'),
+                              ),
                           ],
-                        );
-                      },
+                        ),
+                      ],
                     ),
-                  if ((dog['experience'] ?? '').toString().isNotEmpty)
-                    I18nText('Experience: ${dog['experience']}'),
-                  if ((dog['notes'] ?? '').toString().isNotEmpty)
-                    I18nText('Learner notes: ${dog['notes']}'),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () => note(context),
-                        icon: const Icon(Icons.note_add),
-                        label: const I18nText('STAFF NOTE'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: () => _recommendSkill(context),
-                        icon: const Icon(Icons.assistant_direction),
-                        label: const I18nText('RECOMMEND SKILL'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: () => service.updateDog(dogId, {
-                          'watchList': dog['watchList'] != true,
-                        }),
-                        icon: const Icon(Icons.visibility),
-                        label: I18nText(
-                          dog['watchList'] == true
-                              ? 'REMOVE WATCH'
-                              : 'WATCH LIST',
+                  ),
+                ),
+
+                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: service.trophiesForDog(dogId),
+                  builder: (context, snap) {
+                    final docs = [...(snap.data?.docs ?? [])]
+                      ..sort(
+                        (a, b) =>
+                            ((b.data()['awardedAt'] as Timestamp?)
+                                        ?.millisecondsSinceEpoch ??
+                                    (b.data()['createdAt'] as Timestamp?)
+                                        ?.millisecondsSinceEpoch ??
+                                    0)
+                                .compareTo(
+                                  (a.data()['awardedAt'] as Timestamp?)
+                                          ?.millisecondsSinceEpoch ??
+                                      (a.data()['createdAt'] as Timestamp?)
+                                          ?.millisecondsSinceEpoch ??
+                                      0,
+                                ),
+                      );
+
+                    return Card(
+                      child: ExpansionTile(
+                        leading: const Icon(Icons.emoji_events),
+                        title: I18nText('${docs.length} trophies earned'),
+                        subtitle: const I18nText(
+                          'Tap to view treasure history',
                         ),
+                        children: docs.isEmpty
+                            ? const [
+                                ListTile(
+                                  title: I18nText('No trophies earned yet.'),
+                                ),
+                              ]
+                            : docs.map((d) {
+                                final m = d.data();
+                                final title =
+                                    (m['title'] ?? m['moduleTitle'] ?? d.id)
+                                        .toString();
+
+                                final description = (m['description'] ?? '')
+                                    .toString();
+
+                                final when = m['awardedAt'] ?? m['createdAt'];
+
+                                return ListTile(
+                                  leading: const Icon(Icons.workspace_premium),
+                                  title: I18nText(title),
+                                  subtitle: Text(
+                                    [
+                                      if (description.isNotEmpty) description,
+                                      if (_snapshotDate(when).isNotEmpty)
+                                        _snapshotDate(when),
+                                    ].join(' • '),
+                                  ),
+                                );
+                              }).toList(),
                       ),
-                      if (profile.canManageAccounts)
-                        FilledButton.tonalIcon(
-                          onPressed: () => adjustDoubloons(context),
-                          icon: const Icon(Icons.monetization_on_outlined),
-                          label: const I18nText('ADJUST DOUBLOONS'),
+                    );
+                  },
+                ),
+
+                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: service.trainingLogsForDog(dogId),
+                  builder: (context, snap) {
+                    final docs = [...(snap.data?.docs ?? [])]
+                      ..sort(
+                        (a, b) =>
+                            ((b.data()['createdAt'] as Timestamp?)
+                                        ?.millisecondsSinceEpoch ??
+                                    0)
+                                .compareTo(
+                                  (a.data()['createdAt'] as Timestamp?)
+                                          ?.millisecondsSinceEpoch ??
+                                      0,
+                                ),
+                      );
+
+                    return Card(
+                      child: ExpansionTile(
+                        leading: const Icon(Icons.menu_book),
+                        title: I18nText(
+                          '${docs.length} training diary entries',
                         ),
-                      if (legacy && profile.canManageAccounts)
-                        FilledButton.icon(
-                          onPressed: () async {
-                            await service.migrateLegacyDog(
-                              dogId: dogId,
-                              uid: ownerId,
-                              actor: profile.name,
-                            );
-                            if (context.mounted)
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: I18nText(
-                                    'Legacy dog moved onto a fresh V1.4 Academy voyage.',
+                        subtitle: const I18nText(
+                          'Tap to view training history',
+                        ),
+                        children: docs.isEmpty
+                            ? const [
+                                ListTile(
+                                  title: I18nText(
+                                    'No training diary entries yet.',
                                   ),
                                 ),
-                              );
-                          },
-                          icon: const Icon(Icons.upgrade),
-                          label: const I18nText('START V1.4 ACCESS'),
+                              ]
+                            : docs.map((d) {
+                                final m = d.data();
+
+                                final noteText = (m['note'] ?? '').toString();
+
+                                final when = _snapshotDate(m['createdAt']);
+
+                                return ListTile(
+                                  leading: const Icon(Icons.history),
+                                  title: I18nText(
+                                    '${m['skill'] ?? 'General'} — '
+                                    '${m['result'] ?? ''}',
+                                  ),
+                                  subtitle: Text(
+                                    [
+                                      '${m['minutes'] ?? 0} min',
+                                      if (when.isNotEmpty) when,
+                                      if (noteText.isNotEmpty) noteText,
+                                    ].join(' • '),
+                                  ),
+                                );
+                              }).toList(),
+                      ),
+                    );
+                  },
+                ),
+
+                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: service.staffNotesForDog(dogId),
+                  builder: (context, snap) {
+                    final docs = [...(snap.data?.docs ?? [])]
+                      ..sort(
+                        (a, b) =>
+                            ((b.data()['createdAt'] as Timestamp?)
+                                        ?.millisecondsSinceEpoch ??
+                                    0)
+                                .compareTo(
+                                  (a.data()['createdAt'] as Timestamp?)
+                                          ?.millisecondsSinceEpoch ??
+                                      0,
+                                ),
+                      );
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        I18nText(
+                          'Private staff notes',
+                          style: Theme.of(context).textTheme.titleLarge,
                         ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: service.trophiesForDog(dogId),
-            builder: (context, snap) => Card(
-              child: ListTile(
-                leading: const Icon(Icons.emoji_events),
-                title: I18nText(
-                  '${snap.data?.docs.length ?? 0} trophies earned',
-                ),
-              ),
-            ),
-          ),
-          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: service.trainingLogsForDog(dogId),
-            builder: (context, snap) => Card(
-              child: ListTile(
-                leading: const Icon(Icons.menu_book),
-                title: I18nText(
-                  '${snap.data?.docs.length ?? 0} training diary entries',
-                ),
-              ),
-            ),
-          ),
-          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: service.staffNotesForDog(dogId),
-            builder: (context, snap) {
-              final docs = [...(snap.data?.docs ?? [])]
-                ..sort(
-                  (a, b) =>
-                      ((b.data()['createdAt'] as Timestamp?)
-                                  ?.millisecondsSinceEpoch ??
-                              0)
-                          .compareTo(
-                            (a.data()['createdAt'] as Timestamp?)
-                                    ?.millisecondsSinceEpoch ??
-                                0,
+                        if (docs.isEmpty)
+                          const Card(
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: I18nText('No private notes.'),
+                            ),
                           ),
-                );
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  I18nText(
-                    'Private staff notes',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  if (docs.isEmpty)
-                    const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: I18nText('No private notes.'),
-                      ),
-                    ),
-                  ...docs.map(
-                    (d) => Card(
-                      child: ListTile(
-                        title: Text((d.data()['note'] ?? '').toString()),
-                        subtitle: Text((d.data()['author'] ?? '').toString()),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
+                        ...docs.map(
+                          (d) => Card(
+                            child: ListTile(
+                              title: Text((d.data()['note'] ?? '').toString()),
+                              subtitle: Text(
+                                [
+                                  (d.data()['author'] ?? '').toString(),
+                                  if (_snapshotDate(d.data()['createdAt'])
+                                      .isNotEmpty)
+                                    _snapshotDate(d.data()['createdAt']),
+                                ].join(' • '),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
 }
 
 class ReportsScreen extends StatefulWidget {
@@ -3658,11 +4295,15 @@ class _VideoStoragePanelState extends State<VideoStoragePanel> {
   final functions = AdminFunctionsService();
 
   bool refreshing = false;
+  String storageError = '';
 
   Future<void> _refresh() async {
     if (refreshing) return;
 
-    setState(() => refreshing = true);
+    setState(() {
+      refreshing = true;
+      storageError = '';
+    });
 
     try {
       await functions.refreshVideoStorageStats();
@@ -3676,9 +4317,15 @@ class _VideoStoragePanelState extends State<VideoStoragePanel> {
       debugPrint('Video storage refresh failed: $error');
 
       if (mounted) {
+        setState(() {
+          storageError = error.toString();
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: I18nText('Could not refresh storage right now.'),
+            content: Text(
+              'Storage refresh failed. Technical details are shown below.',
+            ),
           ),
         );
       }
@@ -3720,6 +4367,14 @@ class _VideoStoragePanelState extends State<VideoStoragePanel> {
     ),
     childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
     children: [
+      if (storageError.isNotEmpty)
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: SelectableText('Storage refresh error:\n$storageError'),
+          ),
+        ),
+
       StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: service.db
             .collection('settings')
@@ -4889,6 +5544,7 @@ class _NoticeEditorState extends State<NoticeEditor> {
   final msgCy = TextEditingController();
   String priority = 'normal';
   bool translating = false;
+  bool publishing = false;
   bool welshReviewed = false;
 
   @override
@@ -5014,40 +5670,84 @@ class _NoticeEditorState extends State<NoticeEditor> {
   }
 
   Future<void> _publish() async {
+    if (publishing) return;
+
     if (titleEn.text.trim().isEmpty || msgEn.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: I18nText(
+          content: Text(
             'Please add an English title and message before publishing.',
           ),
         ),
       );
       return;
     }
-    await service.addNotice(
-      titleEn: titleEn.text,
-      messageEn: msgEn.text,
-      titleCy: titleCy.text,
-      messageCy: msgCy.text,
-      priority: priority,
-      actor: widget.profile.name,
-      welshReviewed: welshReviewed,
-    );
-    titleEn.clear();
-    msgEn.clear();
-    titleCy.clear();
-    msgCy.clear();
-    if (mounted)
+
+    if (titleCy.text.trim().isEmpty || msgCy.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please translate or type the Welsh title and message before publishing.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => publishing = true);
+
+    try {
+      await service.addNotice(
+        titleEn: titleEn.text.trim(),
+        messageEn: msgEn.text.trim(),
+        titleCy: titleCy.text.trim(),
+        messageCy: msgCy.text.trim(),
+        priority: priority,
+        actor: widget.profile.name,
+        welshReviewed: welshReviewed,
+      );
+
+      if (!mounted) return;
+
+      titleEn.clear();
+      msgEn.clear();
+      titleCy.clear();
+      msgCy.clear();
+
+      FocusScope.of(context).unfocus();
+
       setState(() {
         priority = 'normal';
         welshReviewed = false;
       });
-    if (mounted)
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 5),
+            content: Text(
+              '✅ Notice published successfully in English and Welsh.',
+            ),
+          ),
+        );
+    } catch (error) {
+      debugPrint('Academy notice publish failed: $error');
+
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: I18nText('Notice published in English and Welsh.'),
+          content: Text(
+            'Notice could not be published. Nothing was lost — please try again.',
+          ),
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => publishing = false);
+      }
+    }
   }
 
   @override
@@ -5164,9 +5864,104 @@ class _NoticeEditorState extends State<NoticeEditor> {
             ),
             const SizedBox(height: 10),
             FilledButton.icon(
-              onPressed: _publish,
-              icon: const Icon(Icons.publish),
-              label: const I18nText('PUBLISH NOTICE'),
+              onPressed: publishing ? null : _publish,
+              icon: publishing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.publish),
+              label: Text(publishing ? 'PUBLISHING...' : 'PUBLISH NOTICE'),
+            ),
+
+            const SizedBox(height: 18),
+            const Divider(),
+            const SizedBox(height: 8),
+
+            Text(
+              'Published Notices',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'These are the notices currently visible to Academy users.',
+            ),
+            const SizedBox(height: 8),
+
+            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: service.notices(),
+              builder: (context, snap) {
+                final docs = [...(snap.data?.docs ?? [])]
+                  ..sort(
+                    (a, b) =>
+                        ((b.data()['createdAt'] as Timestamp?)
+                                    ?.millisecondsSinceEpoch ??
+                                0)
+                            .compareTo(
+                              (a.data()['createdAt'] as Timestamp?)
+                                      ?.millisecondsSinceEpoch ??
+                                  0,
+                            ),
+                  );
+
+                if (docs.isEmpty) {
+                  return const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(14),
+                      child: Text('No published notices are currently active.'),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: docs.map((d) {
+                    final m = d.data();
+
+                    return Card(
+                      child: ListTile(
+                        leading: Icon(
+                          (m['priority'] ?? '') == 'important'
+                              ? Icons.priority_high
+                              : Icons.campaign,
+                        ),
+                        title: Text(
+                          (m['titleEn'] ?? m['title'] ?? 'Notice').toString(),
+                        ),
+                        subtitle: Text(
+                          (m['messageEn'] ?? m['message'] ?? '').toString(),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: TextButton.icon(
+                          onPressed: () async {
+                            await service.db
+                                .collection('notices')
+                                .doc(d.id)
+                                .update({
+                                  'active': false,
+                                  'removedAt': FieldValue.serverTimestamp(),
+                                  'removedBy': widget.profile.name,
+                                });
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Notice removed from the Academy.',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.visibility_off),
+                          label: const Text('REMOVE'),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
             ),
           ],
         ),
@@ -5232,9 +6027,148 @@ class FeedbackAdmin extends StatelessWidget {
 
 class CaptainLogPanel extends StatefulWidget {
   final AppUser profile;
+
   const CaptainLogPanel({super.key, required this.profile});
+
   @override
   State<CaptainLogPanel> createState() => _CaptainLogPanelState();
+}
+
+class _CaptainLogPanelState extends State<CaptainLogPanel> {
+  final service = FirestoreService();
+  final c = TextEditingController();
+
+  bool showDone = false;
+
+  @override
+  void dispose() {
+    c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ExpansionTile(
+    leading: const Icon(Icons.menu_book),
+    title: const I18nText('Captain’s Log'),
+    subtitle: const I18nText(
+      'Private Captain/Admin ideas, jobs and follow-ups.',
+    ),
+    children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: c,
+                decoration: const InputDecoration(
+                  label: I18nText('Idea / action / follow-up'),
+                ),
+              ),
+            ),
+            const SizedBox(width: 7),
+            IconButton.filled(
+              onPressed: () async {
+                final text = c.text.trim();
+
+                if (text.isEmpty) return;
+
+                await service.addCaptainLog(
+                  author: widget.profile.name,
+                  text: text,
+                );
+
+                c.clear();
+
+                if (context.mounted) {
+                  FocusScope.of(context).unfocus();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: I18nText('Captain’s Log item added.'),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+      ),
+
+      Padding(
+        padding: const EdgeInsets.all(12),
+        child: SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment<bool>(
+              value: false,
+              icon: Icon(Icons.pending_actions),
+              label: I18nText('OPEN'),
+            ),
+            ButtonSegment<bool>(
+              value: true,
+              icon: Icon(Icons.task_alt),
+              label: I18nText('DONE'),
+            ),
+          ],
+          selected: {showDone},
+          onSelectionChanged: (selection) {
+            setState(() => showDone = selection.first);
+          },
+        ),
+      ),
+
+      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: service.captainLog(),
+        builder: (context, snap) {
+          final docs = [...(snap.data?.docs ?? [])]
+            ..sort(
+              (a, b) =>
+                  ((b.data()['createdAt'] as Timestamp?)
+                              ?.millisecondsSinceEpoch ??
+                          0)
+                      .compareTo(
+                        (a.data()['createdAt'] as Timestamp?)
+                                ?.millisecondsSinceEpoch ??
+                            0,
+                      ),
+            );
+
+          final visible = docs.where((d) {
+            final done = d.data()['done'] == true;
+            return showDone ? done : !done;
+          }).toList();
+
+          if (visible.isEmpty) {
+            return ListTile(
+              leading: Icon(
+                showDone ? Icons.history : Icons.check_circle_outline,
+              ),
+              title: I18nText(
+                showDone
+                    ? 'No completed Captain’s Log items.'
+                    : 'No open Captain’s Log items.',
+              ),
+            );
+          }
+
+          return Column(
+            children: visible
+                .map(
+                  (d) => CheckboxListTile(
+                    value: d.data()['done'] == true,
+                    title: Text((d.data()['text'] ?? '').toString()),
+                    subtitle: Text((d.data()['author'] ?? '').toString()),
+                    onChanged: (v) =>
+                        service.toggleCaptainLog(d.id, v ?? false),
+                  ),
+                )
+                .toList(),
+          );
+        },
+      ),
+    ],
+  );
 }
 
 class _CaptainLogPanelState extends State<CaptainLogPanel> {

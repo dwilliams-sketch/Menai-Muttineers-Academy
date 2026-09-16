@@ -220,34 +220,58 @@ class _ModuleScreenState extends State<ModuleScreen> {
       );
       return;
     }
+    if (busy) return;
+
     setState(() => busy = true);
-    await service.submitVideo(
-      uid: widget.profile.id,
-      dogId: widget.dog.id,
-      module: widget.module,
-      videoUrl: uploadedAssessmentVideo?.downloadUrl ?? video.text.trim(),
-      storagePath: uploadedAssessmentVideo?.storagePath ?? '',
-      videoSource: uploadedAssessmentVideo != null
-          ? 'academy_upload'
-          : 'external_link',
-      videoSizeBytes: uploadedAssessmentVideo?.sizeBytes ?? 0,
-      note: note.text,
-      learnerName: widget.profile.name,
-      dogName: widget.dog.name,
-    );
 
-    assessmentSubmitted = true;
+    try {
+      await service.submitVideo(
+        uid: widget.profile.id,
+        dogId: widget.dog.id,
+        module: widget.module,
+        videoUrl: uploadedAssessmentVideo?.downloadUrl ?? video.text.trim(),
+        storagePath: uploadedAssessmentVideo?.storagePath ?? '',
+        videoSource: uploadedAssessmentVideo != null
+            ? 'academy_upload'
+            : 'external_link',
+        videoSizeBytes: uploadedAssessmentVideo?.sizeBytes ?? 0,
+        note: note.text,
+        learnerName: widget.profile.name,
+        dogName: widget.dog.name,
+      );
 
-    if (mounted) {
+      assessmentSubmitted = true;
+
+      if (!mounted) return;
+
       video.clear();
       note.clear();
+
       setState(() {
-        busy = false;
         uploadedAssessmentVideo = null;
+        ready1 = false;
+        ready2 = false;
+        ready3 = false;
+        ready4 = false;
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: I18nText('Assessment sent to the trainers.')),
+        const SnackBar(content: I18nText('✅ Assessment sent to the trainers.')),
       );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: I18nText(
+            'Assessment could not be completed. Your video is still here — please try again.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => busy = false);
+      }
     }
   }
 
