@@ -1,7 +1,7 @@
 name: academy
 description: Menai Muttineers Pre-Flyball Academy - Android and Web V1.4
 publish_to: 'none'
-version: 1.4.0+10
+version: 1.4.0+17
 environment:
   sdk: '>=3.10.0 <4.0.0'
 
@@ -11,7 +11,16 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   firebase_core: 4.12.1
+  # Keep the Dart Pigeon schema matched to firebase_core 4.12.1's Android code.
+  # Newer 8.1.x removed a CoreFirebaseOptions field and is not wire-compatible
+  # with the 4.12.1 Android generated host API.
+  firebase_core_platform_interface: 8.0.0
+  # 3.10.x requires platform_interface 8.1.x, so keep the matching web peer too.
+  firebase_core_web: 3.9.1
   firebase_auth: 6.5.6
+  # Keep Firebase Auth's Dart Pigeon client matched to firebase_auth 6.5.6.
+  firebase_auth_platform_interface: 9.0.5
+  firebase_auth_web: 6.2.5
   cloud_firestore: 6.7.1
   firebase_messaging: 16.4.3
   firebase_storage: 13.4.5

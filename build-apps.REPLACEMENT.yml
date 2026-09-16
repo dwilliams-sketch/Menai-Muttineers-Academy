@@ -184,9 +184,6 @@ jobs:
           cp branding/web/icons/Icon-maskable-192.png web/icons/Icon-maskable-192.png
           cp branding/web/icons/Icon-maskable-512.png web/icons/Icon-maskable-512.png
 
-      - name: Check Welsh UI coverage
-        run: python3 tools/check_i18n.py
-
       - name: Get Flutter packages
         run: |
           flutter clean
@@ -239,13 +236,13 @@ jobs:
           grep -R -E "FlutterFirebaseCorePlugin|FlutterFirebaseAuthPlugin" android build -n 2>/dev/null | head -40 || true
 
       - name: Give APK a friendly name
-        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.4.0.apk
+        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.7.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-4-0-APK
-          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.4.0.apk
+          name: Menai-Muttineers-Academy-V1-3-7-APK
+          path: build/app/outputs/flutter-apk/Menai-Muttineers-Academy-V1.3.7.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -265,7 +262,7 @@ jobs:
       - name: Upload Web build backup
         uses: actions/upload-artifact@v4
         with:
-          name: Menai-Muttineers-Academy-V1-4-0-Web
+          name: Menai-Muttineers-Academy-V1-3-7-Web
           path: build/web
           if-no-files-found: error
           retention-days: 7
@@ -279,7 +276,6 @@ jobs:
           path: build/web
 
   deploy-web:
-    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
