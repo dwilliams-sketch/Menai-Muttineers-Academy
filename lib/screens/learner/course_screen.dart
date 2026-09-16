@@ -585,49 +585,218 @@ class _LessonCard extends StatelessWidget {
   Future<void> _needHelp(BuildContext context) async {
     final message = TextEditingController();
     final video = TextEditingController();
+    final media = MediaService();
+
+    UploadedAcademyVideo? uploadedHelpVideo;
+    bool uploadingVideo = false;
+
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: I18nText('Need help — ${lesson.title}'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                const I18nText(
-                  'Tell the trainers what is happening. This creates a conversation linked to this exact lesson.',
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: message,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    label: I18nText('What are you struggling with?'),
+      barrierDismissible: !uploadingVideo,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          Future<void> chooseVideo({required bool record}) async {
+            if (uploadingVideo) return;
+
+            setDialogState(() => uploadingVideo = true);
+
+            try {
+              final result = record
+                  ? await media.recordHelpVideo(uid: profile.id)
+                  : await media.chooseHelpVideo(uid: profile.id);
+
+              if (result == null) return;
+
+              final previous = uploadedHelpVideo;
+
+              setDialogState(() {
+                uploadedHelpVideo = result;
+                video.clear();
+              });
+
+              if (previous != null &&
+                  previous.storagePath != result.storagePath) {
+                try {
+                  await media.deleteAcademyVideo(previous.storagePath);
+                } catch (_) {}
+              }
+            } on AcademyVideoTooLargeException {
+              if (ctx.mounted) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(
+                    content: I18nText(
+                      'That video is too large. Please choose a shorter clip under 100 MB.',
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: video,
-                  decoration: const InputDecoration(
-                    label: I18nText('Optional video link'),
+                );
+              }
+            } catch (_) {
+              if (ctx.mounted) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(
+                    content: I18nText(
+                      'We could not upload that video. Please try again or use a video link instead.',
+                    ),
                   ),
+                );
+              }
+            } finally {
+              if (ctx.mounted) {
+                setDialogState(() => uploadingVideo = false);
+              }
+            }
+          }
+
+          Future<void> removeVideo() async {
+            final current = uploadedHelpVideo;
+            if (current == null || uploadingVideo) return;
+
+            setDialogState(() => uploadingVideo = true);
+
+            try {
+              await media.deleteAcademyVideo(current.storagePath);
+
+              if (ctx.mounted) {
+                setDialogState(() => uploadedHelpVideo = null);
+              }
+            } catch (_) {
+              if (ctx.mounted) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(
+                    content: I18nText(
+                      'We could not remove that video. Please try again.',
+                    ),
+                  ),
+                );
+              }
+            } finally {
+              if (ctx.mounted) {
+                setDialogState(() => uploadingVideo = false);
+              }
+            }
+          }
+
+          return AlertDialog(
+            title: I18nText('Need help — ${lesson.title}'),
+            content: SizedBox(
+              width: 560,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const I18nText(
+                      'Tell the trainers what is happening. You can also send us a short video so we can see exactly what you mean.',
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: message,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        label: I18nText('What are you struggling with?'),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const I18nText(
+                      'Show us the problem',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: uploadingVideo
+                              ? null
+                              : () => chooseVideo(record: true),
+                          icon: const Icon(Icons.videocam),
+                          label: const I18nText('RECORD VIDEO'),
+                        ),
+                        FilledButton.tonalIcon(
+                          onPressed: uploadingVideo
+                              ? null
+                              : () => chooseVideo(record: false),
+                          icon: const Icon(Icons.video_library),
+                          label: const I18nText('CHOOSE FROM PHONE'),
+                        ),
+                      ],
+                    ),
+                    if (uploadingVideo) ...[
+                      const SizedBox(height: 12),
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 6),
+                      const I18nText('Uploading your video...'),
+                    ],
+                    if (uploadedHelpVideo != null) ...[
+                      const SizedBox(height: 10),
+                      Card(
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                          ),
+                          title: const I18nText('Video ready'),
+                          subtitle: I18nText(
+                            '${(uploadedHelpVideo!.sizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB • Ready for the trainers',
+                          ),
+                          trailing: IconButton(
+                            tooltip: 'Remove video',
+                            onPressed: uploadingVideo ? null : removeVideo,
+                            icon: const Icon(Icons.delete_outline),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 12),
+                      const Row(
+                        children: [
+                          Expanded(child: Divider()),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: I18nText('OR USE A LINK'),
+                          ),
+                          Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: video,
+                        decoration: const InputDecoration(
+                          label: I18nText('Optional video link'),
+                          hint: I18nText(
+                            'YouTube / Google Drive / iCloud / other share link',
+                          ),
+                          prefixIcon: Icon(Icons.link),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    const I18nText(
+                      'A short clip is normally plenty. Recordings are limited to 90 seconds.',
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const I18nText('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const I18nText('Send to Trainers'),
-          ),
-        ],
+            actions: [
+              TextButton(
+                onPressed: uploadingVideo
+                    ? null
+                    : () => Navigator.pop(ctx, false),
+                child: const I18nText('Cancel'),
+              ),
+              FilledButton(
+                onPressed: uploadingVideo || message.text.trim().isEmpty
+                    ? null
+                    : () => Navigator.pop(ctx, true),
+                child: const I18nText('Send to Trainers'),
+              ),
+            ],
+          );
+        },
       ),
     );
+
     if (ok == true && message.text.trim().isNotEmpty) {
       await service.requestLessonHelp(
         uid: profile.id,
@@ -639,21 +808,36 @@ class _LessonCard extends StatelessWidget {
         lessonId: lesson.id,
         lessonTitle: lesson.title,
         message: message.text,
-        videoUrl: video.text,
+        videoUrl: uploadedHelpVideo?.downloadUrl ?? video.text.trim(),
+        storagePath: uploadedHelpVideo?.storagePath ?? '',
+        videoSource: uploadedHelpVideo != null
+            ? 'academy_upload'
+            : 'external_link',
+        videoSizeBytes: uploadedHelpVideo?.sizeBytes ?? 0,
       );
+
       await service.setLessonStatus(
         dogId: dog.id,
         moduleId: module.id,
         lessonId: lesson.id,
         status: 'need_help',
       );
-      if (context.mounted)
+
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: I18nText('Help request sent to the trainers.'),
           ),
         );
+      }
+    } else if (uploadedHelpVideo != null) {
+      // Learner uploaded a clip but then cancelled the Help Me request.
+      // Remove it so abandoned videos do not waste storage.
+      try {
+        await media.deleteAcademyVideo(uploadedHelpVideo!.storagePath);
+      } catch (_) {}
     }
+
     message.dispose();
     video.dispose();
   }

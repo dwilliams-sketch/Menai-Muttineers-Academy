@@ -773,6 +773,9 @@ class FirestoreService {
     required String lessonTitle,
     required String message,
     required String videoUrl,
+    String storagePath = '',
+    String videoSource = 'link',
+    int videoSizeBytes = 0,
   }) async {
     final ref = await db.collection('lessonHelp').add({
       'userId': uid,
@@ -795,6 +798,10 @@ class FirestoreService {
       'senderRole': 'learner',
       'message': message.trim(),
       'videoUrl': videoUrl.trim(),
+      'storagePath': storagePath.trim(),
+      'videoSource': videoSource,
+      'videoSizeBytes': videoSizeBytes,
+      'videoArchived': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
     await notifyStaff(
