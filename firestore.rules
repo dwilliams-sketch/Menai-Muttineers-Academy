@@ -163,7 +163,16 @@ service cloud.firestore {
         function thread() { return get(/databases/$(database)/documents/lessonHelp/$(threadId)); }
         allow read: if signedIn() && (thread().data.userId == request.auth.uid || staff());
         allow create: if signedIn() && (thread().data.userId == request.auth.uid || staff());
-        allow update, delete: if false;
+
+        // V1.4.2: staff may flag a learner video for archive,
+        // but may not edit the actual message or video details.
+        allow update: if staff()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'videoArchiveRequested',
+            'videoArchiveRequestedAt'
+          ]);
+
+        allow delete: if false;
       }
     }
 

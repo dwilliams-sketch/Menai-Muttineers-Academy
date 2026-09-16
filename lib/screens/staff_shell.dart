@@ -10,6 +10,7 @@ import '../i18n.dart';
 
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 import '../course_data.dart';
 import '../models.dart';
@@ -724,6 +725,12 @@ class ReviewQueue extends StatelessWidget {
         children: docs.map((d) {
           final m = d.data();
           final assigned = (m['assignedTo'] ?? '').toString();
+          final videoUrl = (m['videoUrl'] ?? '').toString();
+          final academyUpload =
+              videoUrl.isNotEmpty &&
+              (m['videoSource'] ?? '').toString() == 'academy_upload';
+          final keepForRecords = m['videoArchiveRequested'] == true;
+
           return Card(
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -742,14 +749,51 @@ class ReviewQueue extends StatelessWidget {
                     spacing: 7,
                     runSpacing: 7,
                     children: [
-                      if ((m['videoUrl'] ?? '').toString().isNotEmpty)
+                      if (videoUrl.isNotEmpty && academyUpload)
+                        FilledButton.tonalIcon(
+                          onPressed: () => _watchAcademyVideo(
+                            context,
+                            url: videoUrl,
+                            title: (m['moduleTitle'] ?? 'Video').toString(),
+                          ),
+                          icon: const Icon(Icons.play_circle),
+                          label: const I18nText('Watch in app'),
+                        )
+                      else if (videoUrl.isNotEmpty)
                         OutlinedButton.icon(
                           onPressed: () async {
-                            final u = Uri.tryParse(m['videoUrl']);
+                            final u = Uri.tryParse(videoUrl);
                             if (u != null) await launchUrl(u);
                           },
-                          icon: const Icon(Icons.play_circle),
-                          label: const I18nText('Video'),
+                          icon: const Icon(Icons.open_in_new),
+                          label: const I18nText('Open video'),
+                        ),
+                      if (academyUpload)
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            final u = Uri.tryParse(videoUrl);
+                            if (u != null) await launchUrl(u);
+                          },
+                          icon: const Icon(Icons.open_in_new),
+                          label: const I18nText('Open original'),
+                        ),
+                      if (academyUpload)
+                        OutlinedButton.icon(
+                          onPressed: () =>
+                              service.setSubmissionVideoArchiveRequested(
+                                d.id,
+                                !keepForRecords,
+                              ),
+                          icon: Icon(
+                            keepForRecords
+                                ? Icons.bookmark
+                                : Icons.bookmark_border,
+                          ),
+                          label: I18nText(
+                            keepForRecords
+                                ? 'Kept for records'
+                                : 'Keep for records',
+                          ),
                         ),
                       if (assigned.isEmpty)
                         OutlinedButton(
@@ -839,6 +883,148 @@ class HelpQueue extends StatelessWidget {
             ),
           );
         }).toList(),
+      );
+    },
+  );
+}
+
+Future<void> _watchAcademyVideo(
+  BuildContext context, {
+  required String url,
+  required String title,
+}) async {
+  final uri = Uri.tryParse(url);
+
+  if (uri == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: I18nText('Video could not be played here.')),
+    );
+    return;
+  }
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: I18nText(title),
+      content: SizedBox(width: 720, child: _AcademyVideoPlayer(url: url)),
+      actions: [
+        TextButton.icon(
+          onPressed: () => launchUrl(uri),
+          icon: const Icon(Icons.open_in_new),
+          label: const I18nText('Open original'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const I18nText('Cancel'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _AcademyVideoPlayer extends StatefulWidget {
+  final String url;
+
+  const _AcademyVideoPlayer({required this.url});
+
+  @override
+  State<_AcademyVideoPlayer> createState() => _AcademyVideoPlayerState();
+}
+
+class _AcademyVideoPlayerState extends State<_AcademyVideoPlayer> {
+  late final VideoPlayerController controller;
+  late final Future<void> initialise;
+
+  @override
+  void initState() {
+    super.initState();
+
+    controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    initialise = controller.initialize();
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<void>(
+    future: initialise,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return const Padding(
+          padding: EdgeInsets.all(16),
+          child: I18nText(
+            'Video could not be played here.',
+            textAlign: TextAlign.center,
+          ),
+        );
+      }
+
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Padding(
+          padding: EdgeInsets.all(24),
+          child: Center(child: CircularProgressIndicator()),
+        );
+      }
+
+      final aspectRatio = controller.value.aspectRatio > 0
+          ? controller.value.aspectRatio
+          : 16 / 9;
+
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: AspectRatio(
+              aspectRatio: aspectRatio,
+              child: VideoPlayer(controller),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ValueListenableBuilder<VideoPlayerValue>(
+            valueListenable: controller,
+            builder: (context, value, _) {
+              final durationMs = value.duration.inMilliseconds;
+              final positionMs = value.position.inMilliseconds.clamp(
+                0,
+                durationMs > 0 ? durationMs : 1,
+              );
+
+              return Row(
+                children: [
+                  IconButton.filledTonal(
+                    onPressed: () {
+                      if (value.isPlaying) {
+                        controller.pause();
+                      } else {
+                        controller.play();
+                      }
+                    },
+                    icon: Icon(
+                      value.isPlaying ? Icons.pause : Icons.play_arrow,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Slider(
+                      value: positionMs.toDouble(),
+                      max: (durationMs > 0 ? durationMs : 1).toDouble(),
+                      onChanged: durationMs <= 0
+                          ? null
+                          : (v) => controller.seekTo(
+                              Duration(milliseconds: v.round()),
+                            ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
       );
     },
   );
@@ -1103,13 +1289,11 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                   final builtIns = <Map<String, String>>[
                     {
                       'title': 'Shorter session',
-                      'text':
-                          'Try making the next session much shorter and finish while your dog is still keen.',
+                      'text': 'Try making the next session much shorter and finish while your dog is still keen.',
                     },
                     {
                       'title': 'Another angle',
-                      'text':
-                          'Could you send us another short video from the side so we can see the movement more clearly?',
+                      'text': 'Could you send us another short video from the side so we can see the movement more clearly?',
                     },
                   ];
                   final saved = (snap.data?.docs ?? [])
@@ -1161,6 +1345,12 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                 children: docs.map((d) {
                   final m = d.data();
                   final staff = (m['senderRole'] ?? '') != 'learner';
+                  final videoUrl = (m['videoUrl'] ?? '').toString();
+                  final academyUpload =
+                      videoUrl.isNotEmpty &&
+                      (m['videoSource'] ?? '').toString() == 'academy_upload';
+                  final keepForRecords = m['videoArchiveRequested'] == true;
+
                   return Align(
                     alignment: staff
                         ? Alignment.centerRight
@@ -1184,14 +1374,65 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                           ),
                           if ((m['message'] ?? '').toString().trim().isNotEmpty)
                             Text((m['message'] ?? '').toString()),
-                          if ((m['videoUrl'] ?? '').toString().isNotEmpty)
-                            TextButton.icon(
-                              onPressed: () async {
-                                final u = Uri.tryParse(m['videoUrl']);
-                                if (u != null) await launchUrl(u);
-                              },
-                              icon: const Icon(Icons.play_circle),
-                              label: const I18nText('Open video'),
+                          if (videoUrl.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  if (academyUpload)
+                                    FilledButton.tonalIcon(
+                                      onPressed: () => _watchAcademyVideo(
+                                        context,
+                                        url: videoUrl,
+                                        title:
+                                            (widget.thread['lessonTitle'] ??
+                                                    'Video')
+                                                .toString(),
+                                      ),
+                                      icon: const Icon(Icons.play_circle),
+                                      label: const I18nText('Watch in app'),
+                                    )
+                                  else
+                                    TextButton.icon(
+                                      onPressed: () async {
+                                        final u = Uri.tryParse(videoUrl);
+                                        if (u != null) await launchUrl(u);
+                                      },
+                                      icon: const Icon(Icons.open_in_new),
+                                      label: const I18nText('Open video'),
+                                    ),
+                                  if (academyUpload)
+                                    TextButton.icon(
+                                      onPressed: () async {
+                                        final u = Uri.tryParse(videoUrl);
+                                        if (u != null) await launchUrl(u);
+                                      },
+                                      icon: const Icon(Icons.open_in_new),
+                                      label: const I18nText('Open original'),
+                                    ),
+                                  if (academyUpload)
+                                    TextButton.icon(
+                                      onPressed: () =>
+                                          service.setHelpVideoArchiveRequested(
+                                            threadId: widget.threadId,
+                                            messageId: d.id,
+                                            value: !keepForRecords,
+                                          ),
+                                      icon: Icon(
+                                        keepForRecords
+                                            ? Icons.bookmark
+                                            : Icons.bookmark_border,
+                                      ),
+                                      label: I18nText(
+                                        keepForRecords
+                                            ? 'Kept for records'
+                                            : 'Keep for records',
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                         ],
                       ),

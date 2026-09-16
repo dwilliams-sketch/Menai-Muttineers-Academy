@@ -647,6 +647,7 @@ class FirestoreService {
       'videoSource': videoSource,
       'videoSizeBytes': videoSizeBytes,
       'videoArchived': false,
+      'videoArchiveRequested': false,
       'note': note.trim(),
       'status': 'waiting',
       'feedback': '',
@@ -671,6 +672,28 @@ class FirestoreService {
 
   Future<void> claimSubmission(String id, String trainerName) =>
       db.collection('submissions').doc(id).update({'assignedTo': trainerName});
+
+  Future<void> setSubmissionVideoArchiveRequested(
+    String submissionId,
+    bool value,
+  ) => db.collection('submissions').doc(submissionId).update({
+    'videoArchiveRequested': value,
+    'videoArchiveRequestedAt': value ? FieldValue.serverTimestamp() : null,
+  });
+
+  Future<void> setHelpVideoArchiveRequested({
+    required String threadId,
+    required String messageId,
+    required bool value,
+  }) => db
+      .collection('lessonHelp')
+      .doc(threadId)
+      .collection('messages')
+      .doc(messageId)
+      .update({
+        'videoArchiveRequested': value,
+        'videoArchiveRequestedAt': value ? FieldValue.serverTimestamp() : null,
+      });
 
   Future<void> reviewSubmission({
     required String submissionId,
@@ -802,6 +825,7 @@ class FirestoreService {
       'videoSource': videoSource,
       'videoSizeBytes': videoSizeBytes,
       'videoArchived': false,
+      'videoArchiveRequested': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
     await notifyStaff(
