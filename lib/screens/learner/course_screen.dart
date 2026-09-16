@@ -691,6 +691,7 @@ class _LessonCard extends StatelessWidget {
                     TextField(
                       controller: message,
                       maxLines: 5,
+                      onChanged: (_) => setDialogState(() {}),
                       decoration: const InputDecoration(
                         label: I18nText('What are you struggling with?'),
                       ),
