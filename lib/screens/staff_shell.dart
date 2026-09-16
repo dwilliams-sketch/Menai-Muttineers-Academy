@@ -730,6 +730,7 @@ class ReviewQueue extends StatelessWidget {
               videoUrl.isNotEmpty &&
               (m['videoSource'] ?? '').toString() == 'academy_upload';
           final keepForRecords = m['videoArchiveRequested'] == true;
+          final safelyArchived = m['videoArchived'] == true;
 
           return Card(
             child: Padding(
@@ -777,7 +778,7 @@ class ReviewQueue extends StatelessWidget {
                           icon: const Icon(Icons.open_in_new),
                           label: const I18nText('Open original'),
                         ),
-                      if (academyUpload)
+                      if (academyUpload && !safelyArchived)
                         OutlinedButton.icon(
                           onPressed: () =>
                               service.setSubmissionVideoArchiveRequested(
@@ -794,6 +795,38 @@ class ReviewQueue extends StatelessWidget {
                                 ? 'Kept for records'
                                 : 'Keep for records',
                           ),
+                        ),
+                      if (academyUpload && keepForRecords && !safelyArchived)
+                        FilledButton.tonalIcon(
+                          onPressed: () async {
+                            final archiveUrl = await _confirmVideoArchived(
+                              context,
+                            );
+
+                            if (archiveUrl == null) return;
+
+                            await service.markSubmissionVideoArchived(
+                              d.id,
+                              archiveUrl: archiveUrl,
+                            );
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: I18nText(
+                                    'Video marked safely archived.',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.inventory_2),
+                          label: const I18nText('MARK SAFELY ARCHIVED'),
+                        ),
+                      if (safelyArchived)
+                        const Chip(
+                          avatar: Icon(Icons.verified, size: 18),
+                          label: I18nText('Safely archived'),
                         ),
                       if (assigned.isEmpty)
                         OutlinedButton(
@@ -886,6 +919,54 @@ class HelpQueue extends StatelessWidget {
       );
     },
   );
+}
+
+Future<String?> _confirmVideoArchived(BuildContext context) async {
+  final archiveLink = TextEditingController();
+
+  final result = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const I18nText('Archive copy saved?'),
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const I18nText(
+              'Download the video and save it somewhere permanent first. You can paste the Drive or folder link below if you want.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: archiveLink,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.link),
+                label: I18nText('Archive link (optional)'),
+                hintText: 'https://drive.google.com/...',
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const I18nText('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: () =>
+              Navigator.pop(dialogContext, archiveLink.text.trim()),
+          icon: const Icon(Icons.verified),
+          label: const I18nText('CONFIRM ARCHIVED'),
+        ),
+      ],
+    ),
+  );
+
+  archiveLink.dispose();
+  return result;
 }
 
 Future<void> _watchAcademyVideo(
