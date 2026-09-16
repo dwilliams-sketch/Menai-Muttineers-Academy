@@ -855,69 +855,120 @@ class ReviewQueue extends StatelessWidget {
   );
 }
 
-class HelpQueue extends StatelessWidget {
+class HelpQueue extends StatefulWidget {
   final AppUser profile;
   final String filter;
-  HelpQueue({super.key, required this.profile, this.filter = ''});
-  final service = FirestoreService();
+
+  const HelpQueue({super.key, required this.profile, this.filter = ''});
+
   @override
-  Widget build(
-    BuildContext context,
-  ) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: service.allLessonHelp(),
-    builder: (context, snap) {
-      final docs =
-          (snap.data?.docs ?? []).where((d) {
-            final m = d.data();
-            return m['status'] != 'resolved' &&
-                (filter.isEmpty ||
-                    (m['lessonTitle'] ?? '').toString() == filter);
-          }).toList()..sort(
-            (a, b) =>
-                ((a.data()['updatedAt'] as Timestamp?)
-                            ?.millisecondsSinceEpoch ??
-                        0)
-                    .compareTo(
-                      (b.data()['updatedAt'] as Timestamp?)
-                              ?.millisecondsSinceEpoch ??
-                          0,
+  State<HelpQueue> createState() => _HelpQueueState();
+}
+
+class _HelpQueueState extends State<HelpQueue> {
+  final service = FirestoreService();
+  bool showResolved = false;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment<bool>(
+              value: false,
+              icon: Icon(Icons.inbox_outlined),
+              label: I18nText('ACTIVE'),
+            ),
+            ButtonSegment<bool>(
+              value: true,
+              icon: Icon(Icons.history),
+              label: I18nText('RESOLVED'),
+            ),
+          ],
+          selected: {showResolved},
+          onSelectionChanged: (selection) {
+            setState(() => showResolved = selection.first);
+          },
+        ),
+      ),
+      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: service.allLessonHelp(),
+        builder: (context, snap) {
+          final docs =
+              (snap.data?.docs ?? []).where((d) {
+                final m = d.data();
+                final resolved = m['status'] == 'resolved';
+
+                return (showResolved ? resolved : !resolved) &&
+                    (widget.filter.isEmpty ||
+                        (m['lessonTitle'] ?? '').toString() == widget.filter);
+              }).toList()..sort((a, b) {
+                final aData = a.data();
+                final bData = b.data();
+
+                final aTime =
+                    ((showResolved ? aData['resolvedAt'] : aData['updatedAt'])
+                            as Timestamp?)
+                        ?.millisecondsSinceEpoch ??
+                    0;
+
+                final bTime =
+                    ((showResolved ? bData['resolvedAt'] : bData['updatedAt'])
+                            as Timestamp?)
+                        ?.millisecondsSinceEpoch ??
+                    0;
+
+                return showResolved
+                    ? bTime.compareTo(aTime)
+                    : aTime.compareTo(bTime);
+              });
+
+          if (docs.isEmpty) {
+            return const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: I18nText('Training help inbox zero! 🏴‍☠️'),
+              ),
+            );
+          }
+
+          return Column(
+            children: docs.map((d) {
+              final m = d.data();
+
+              return Card(
+                child: ListTile(
+                  leading: Icon(
+                    showResolved
+                        ? Icons.check_circle_outline
+                        : Icons.support_agent,
+                  ),
+                  title: I18nText(
+                    '${m['dogName']} — ${m['moduleTitle']} / ${m['lessonTitle']}',
+                  ),
+                  subtitle: I18nText(
+                    '${(m['status'] ?? 'new').toString().replaceAll('_', ' ').toUpperCase()}${(m['assignedTo'] ?? '').toString().isEmpty ? '' : ' • ${m['assignedTo']}'}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => StaffHelpThread(
+                        profile: widget.profile,
+                        threadId: d.id,
+                        thread: m,
+                      ),
                     ),
-          );
-      if (docs.isEmpty)
-        return const Card(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: I18nText('Training help inbox zero! 🏴‍☠️'),
-          ),
-        );
-      return Column(
-        children: docs.map((d) {
-          final m = d.data();
-          return Card(
-            child: ListTile(
-              leading: const Icon(Icons.support_agent),
-              title: I18nText(
-                '${m['dogName']} — ${m['moduleTitle']} / ${m['lessonTitle']}',
-              ),
-              subtitle: I18nText(
-                '${(m['status'] ?? 'new').toString().replaceAll('_', ' ').toUpperCase()}${(m['assignedTo'] ?? '').toString().isEmpty ? '' : ' • ${m['assignedTo']}'}',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => StaffHelpThread(
-                    profile: profile,
-                    threadId: d.id,
-                    thread: m,
                   ),
                 ),
-              ),
-            ),
+              );
+            }).toList(),
           );
-        }).toList(),
-      );
-    },
+        },
+      ),
+    ],
   );
 }
 
