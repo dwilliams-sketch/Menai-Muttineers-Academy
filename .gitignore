@@ -1,0 +1,9 @@
+# Flutter generated files
+.dart_tool/
+build/
+
+# Firebase
+firebase-debug.log
+
+# Cloud Functions dependencies
+functions/node_modules/
