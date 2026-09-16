@@ -185,10 +185,15 @@ async function updateVideoStorageStats(options = {}) {
   let expiredNow = 0;
 
   function inspectVideo(data, isAssessment = false) {
-    if (String(data.videoSource || '') !== 'academy_upload') return;
-
     const archiveRequested = data.videoArchiveRequested === true;
     const archived = data.videoArchived === true;
+
+    if (archived) {
+      archivedToDrive += 1;
+    }
+
+    if (String(data.videoSource || '') !== 'academy_upload') return;
+
     const deleteAfter = data.videoDeleteAfter?.toDate?.();
 
     if (!archiveRequested && !archived) {
@@ -199,11 +204,7 @@ async function updateVideoStorageStats(options = {}) {
       markedToKeep += 1;
     }
 
-    if (archived) {
-      archivedToDrive += 1;
-    }
-
-    if (deleteAfter && !archiveRequested && !archived) {
+    if (deleteAfter && !(archiveRequested && !archived)) {
       awaitingDeletion += 1;
 
       if (deleteAfter <= now) {
@@ -378,8 +379,10 @@ exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: '
       const data = doc.data();
 
       if (String(data.videoSource || '') !== 'academy_upload') continue;
-      if (data.videoArchiveRequested === true) continue;
-      if (data.videoArchived === true) continue;
+
+      const archived = data.videoArchived === true;
+
+      if (data.videoArchiveRequested === true && !archived) continue;
 
       const storagePath = String(data.storagePath || '');
 
@@ -398,7 +401,7 @@ exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: '
       await doc.ref.update({
         videoUrl: '',
         storagePath: '',
-        videoSource: 'deleted',
+        videoSource: archived ? 'archived' : 'deleted',
         videoSizeBytes: 0,
         videoDeletedAt: FieldValue.serverTimestamp(),
         videoDeleteAfter: null,
@@ -420,8 +423,10 @@ exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: '
       const data = doc.data();
 
       if (String(data.videoSource || '') !== 'academy_upload') continue;
-      if (data.videoArchiveRequested === true) continue;
-      if (data.videoArchived === true) continue;
+
+      const archived = data.videoArchived === true;
+
+      if (data.videoArchiveRequested === true && !archived) continue;
 
       const storagePath = String(data.storagePath || '');
 
@@ -440,7 +445,7 @@ exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: '
       await doc.ref.update({
         videoUrl: '',
         storagePath: '',
-        videoSource: 'deleted',
+        videoSource: archived ? 'archived' : 'deleted',
         videoSizeBytes: 0,
         videoDeletedAt: FieldValue.serverTimestamp(),
         videoDeleteAfter: null,
