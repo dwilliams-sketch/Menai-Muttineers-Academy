@@ -1703,8 +1703,9 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
           showVideoLink = false;
         });
 
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: I18nText('Message sent.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: I18nText('Message sent.')));
 
         _scrollToLatest();
       }
@@ -1778,11 +1779,13 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                   final builtIns = <Map<String, String>>[
                     {
                       'title': 'Shorter session',
-                      'text': 'Try making the next session much shorter and finish while your dog is still keen.',
+                      'text':
+                          'Try making the next session much shorter and finish while your dog is still keen.',
                     },
                     {
                       'title': 'Another angle',
-                      'text': 'Could you send us another short video from the side so we can see the movement more clearly?',
+                      'text':
+                          'Could you send us another short video from the side so we can see the movement more clearly?',
                     },
                   ];
                   final saved = (snap.data?.docs ?? [])
@@ -1932,14 +1935,15 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
 
                                         if (u == null || !await launchUrl(u)) {
                                           if (context.mounted) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                                  const SnackBar(
-                                                    content: I18nText(
-                                                      'The original video could not be opened.',
-                                                    ),
-                                                  ),
-                                                );
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: I18nText(
+                                                  'The original video could not be opened.',
+                                                ),
+                                              ),
+                                            );
                                           }
                                         }
                                       },
@@ -2379,8 +2383,9 @@ class AccountQueue extends StatelessWidget {
     } on StateError catch (error) {
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: I18nText(error.message.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: I18nText(error.message.toString())));
     } catch (_) {
       if (!context.mounted) return;
 
@@ -3832,8 +3837,9 @@ class DogSnapshot extends StatelessWidget {
                               subtitle: Text(
                                 [
                                   (d.data()['author'] ?? '').toString(),
-                                  if (_snapshotDate(d.data()['createdAt'])
-                                      .isNotEmpty)
+                                  if (_snapshotDate(
+                                    d.data()['createdAt'],
+                                  ).isNotEmpty)
                                     _snapshotDate(d.data()['createdAt']),
                                 ].join(' • '),
                               ),
@@ -4323,7 +4329,7 @@ class _VideoStoragePanelState extends State<VideoStoragePanel> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
+            content: I18nText(
               'Storage refresh failed. Technical details are shown below.',
             ),
           ),
@@ -5675,7 +5681,7 @@ class _NoticeEditorState extends State<NoticeEditor> {
     if (titleEn.text.trim().isEmpty || msgEn.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
+          content: I18nText(
             'Please add an English title and message before publishing.',
           ),
         ),
@@ -5686,7 +5692,7 @@ class _NoticeEditorState extends State<NoticeEditor> {
     if (titleCy.text.trim().isEmpty || msgCy.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
+          content: I18nText(
             'Please translate or type the Welsh title and message before publishing.',
           ),
         ),
@@ -5726,7 +5732,7 @@ class _NoticeEditorState extends State<NoticeEditor> {
         ..showSnackBar(
           const SnackBar(
             duration: Duration(seconds: 5),
-            content: Text(
+            content: I18nText(
               '✅ Notice published successfully in English and Welsh.',
             ),
           ),
@@ -5738,7 +5744,7 @@ class _NoticeEditorState extends State<NoticeEditor> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
+          content: I18nText(
             'Notice could not be published. Nothing was lost — please try again.',
           ),
         ),
@@ -5872,19 +5878,19 @@ class _NoticeEditorState extends State<NoticeEditor> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.publish),
-              label: Text(publishing ? 'PUBLISHING...' : 'PUBLISH NOTICE'),
+              label: I18nText(publishing ? 'PUBLISHING...' : 'PUBLISH NOTICE'),
             ),
 
             const SizedBox(height: 18),
             const Divider(),
             const SizedBox(height: 8),
 
-            Text(
+            I18nText(
               'Published Notices',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 4),
-            const Text(
+            const I18nText(
               'These are the notices currently visible to Academy users.',
             ),
             const SizedBox(height: 8),
@@ -5909,7 +5915,9 @@ class _NoticeEditorState extends State<NoticeEditor> {
                   return const Card(
                     child: Padding(
                       padding: EdgeInsets.all(14),
-                      child: Text('No published notices are currently active.'),
+                      child: I18nText(
+                        'No published notices are currently active.',
+                      ),
                     ),
                   );
                 }
@@ -5947,7 +5955,7 @@ class _NoticeEditorState extends State<NoticeEditor> {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text(
+                                  content: I18nText(
                                     'Notice removed from the Academy.',
                                   ),
                                 ),
@@ -5955,7 +5963,7 @@ class _NoticeEditorState extends State<NoticeEditor> {
                             }
                           },
                           icon: const Icon(Icons.visibility_off),
-                          label: const Text('REMOVE'),
+                          label: const I18nText('REMOVE'),
                         ),
                       ),
                     );

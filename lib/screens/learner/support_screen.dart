@@ -291,7 +291,7 @@ class _HelpThreadScreenState extends State<HelpThreadScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Message could not be sent. Please try again.'),
+          content: I18nText('Message could not be sent. Please try again.'),
         ),
       );
     } finally {
@@ -767,14 +767,15 @@ class _TrainingDiaryPanelState extends State<TrainingDiaryPanel> {
       note.clear();
       FocusScope.of(context).unfocus();
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: I18nText('Training logged.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: I18nText('Training logged.')));
     } catch (_) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Training could not be saved. Please try again.'),
+          content: I18nText('Training could not be saved. Please try again.'),
         ),
       );
     } finally {
@@ -888,7 +889,7 @@ class _TrainingDiaryPanelState extends State<TrainingDiaryPanel> {
               return const Card(
                 child: Padding(
                   padding: EdgeInsets.all(16),
-                  child: Text('No training diary entries yet.'),
+                  child: I18nText('No training diary entries yet.'),
                 ),
               );
             }
@@ -898,7 +899,7 @@ class _TrainingDiaryPanelState extends State<TrainingDiaryPanel> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
+                I18nText(
                   '${docs.length} saved training '
                   '${docs.length == 1 ? 'session' : 'sessions'}',
                 ),
@@ -916,7 +917,7 @@ class _TrainingDiaryPanelState extends State<TrainingDiaryPanel> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          I18nText(
                             '${m['minutes'] ?? 0} min'
                             '${createdAt == null ? '' : ' • ${_date(createdAt)}'}',
                           ),
@@ -937,7 +938,7 @@ class _TrainingDiaryPanelState extends State<TrainingDiaryPanel> {
                       icon: Icon(
                         showAll ? Icons.expand_less : Icons.expand_more,
                       ),
-                      label: Text(
+                      label: I18nText(
                         showAll ? 'SHOW RECENT' : 'VIEW ALL TRAINING HISTORY',
                       ),
                     ),
