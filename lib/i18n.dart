@@ -370,6 +370,8 @@ const Map<String, String> _cy = {
   'Notifications': 'Hysbysiadau',
   'Mark all as read': 'Marcio pob un fel wedi’i ddarllen',
   'No notifications yet.': 'Dim hysbysiadau eto.',
+  'That help conversation could not be found.':
+      'Ni ellid dod o hyd i’r sgwrs gymorth honno.',
   'Your adventure is ready!': 'Mae eich antur yn barod!',
   'Access code': 'Cod mynediad',
   'ACTIVATE ACADEMY': 'GWEITHREDU’R ACADEMI',

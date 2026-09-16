@@ -26,6 +26,69 @@ class _StaffShellState extends State<StaffShell> {
   int index = 0;
   int taskTab = 0;
   String helpFilter = '';
+  final service = FirestoreService();
+
+  Future<void> _openStaffNotification(
+    BuildContext notificationContext,
+    AcademyNotification notification,
+  ) async {
+    if (notification.type == 'staff_help' && notification.targetId.isNotEmpty) {
+      final thread = await service.db
+          .collection('lessonHelp')
+          .doc(notification.targetId)
+          .get();
+
+      if (!mounted) return;
+
+      if (!thread.exists) {
+        Navigator.of(notificationContext).pop();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: I18nText('That help conversation could not be found.'),
+          ),
+        );
+        return;
+      }
+
+      setState(() {
+        index = 1;
+        taskTab = 1;
+        helpFilter = '';
+      });
+
+      Navigator.of(notificationContext).pop();
+
+      await Future<void>.delayed(Duration.zero);
+
+      if (!mounted) return;
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StaffHelpThread(
+            profile: widget.profile,
+            threadId: thread.id,
+            thread: thread.data() ?? <String, dynamic>{},
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    final tab = switch (notification.type) {
+      'staff_assessment' => 0,
+      'staff_one_to_one' => 2,
+      'staff_account' => 3,
+      _ => null,
+    };
+
+    if (tab != null) {
+      Navigator.of(notificationContext).pop();
+      _openTasks(tab, '');
+    }
+  }
 
   void _openTasks(int tab, String filter) {
     setState(() {
@@ -104,7 +167,10 @@ class _StaffShellState extends State<StaffShell> {
         title: I18nText('$role — Academy V1.4'),
         actions: [
           LanguageToggle(userId: widget.profile.id),
-          NotificationBell(profile: widget.profile),
+          NotificationBell(
+            profile: widget.profile,
+            onOpenNotification: _openStaffNotification,
+          ),
           IconButton(
             tooltip: 'Sign out',
             onPressed: () => FirebaseAuth.instance.signOut(),
@@ -898,13 +964,11 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                   final builtIns = <Map<String, String>>[
                     {
                       'title': 'Shorter session',
-                      'text':
-                          'Try making the next session much shorter and finish while your dog is still keen.',
+                      'text': 'Try making the next session much shorter and finish while your dog is still keen.',
                     },
                     {
                       'title': 'Another angle',
-                      'text':
-                          'Could you send us another short video from the side so we can see the movement more clearly?',
+                      'text': 'Could you send us another short video from the side so we can see the movement more clearly?',
                     },
                   ];
                   final saved = (snap.data?.docs ?? [])
