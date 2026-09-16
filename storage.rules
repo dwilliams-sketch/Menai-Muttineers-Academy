@@ -18,6 +18,16 @@ service firebase.storage {
         && (role() == 'admin' || role() == 'captain');
     }
 
+    function trainingStaff() {
+      return signedIn()
+        && (
+          role() == 'trainer'
+          || role() == 'admin'
+          || role() == 'captain'
+        );
+    }
+
+    // Existing profile pictures
     match /profiles/{uid}/{fileName} {
       allow read: if signedIn();
 
@@ -32,6 +42,7 @@ service firebase.storage {
         && (request.auth.uid == uid || accountStaff());
     }
 
+    // Existing dog pictures
     match /dogs/{dogId}/{fileName} {
       allow read: if signedIn();
 
@@ -52,6 +63,36 @@ service firebase.storage {
           firestore.get(
             /databases/(default)/documents/dogs/$(dogId)
           ).data.ownerId == request.auth.uid
+          || accountStaff()
+        );
+    }
+
+    // V1.4.2 learner assessment and Help Me videos.
+    match /academyVideos/{uid}/{videoType}/{fileName} {
+
+      // Learner sees their own footage.
+      // Trainers, Captain and Admin can review submitted footage.
+      allow read: if signedIn()
+        && (
+          request.auth.uid == uid
+          || trainingStaff()
+        );
+
+      // Learners may only upload into their own folder.
+      // Assessment/help are the only permitted video categories.
+      // 100 MB is a hard safety ceiling; the app will target
+      // much smaller compressed files.
+      allow create, update: if signedIn()
+        && request.auth.uid == uid
+        && (videoType == 'assessments' || videoType == 'help')
+        && request.resource.size <= 100 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+
+      // Learner can remove their own unneeded upload.
+      // Captain/Admin can remove footage during housekeeping.
+      allow delete: if signedIn()
+        && (
+          request.auth.uid == uid
           || accountStaff()
         );
     }

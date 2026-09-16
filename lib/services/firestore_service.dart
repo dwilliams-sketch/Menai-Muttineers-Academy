@@ -626,6 +626,9 @@ class FirestoreService {
     required String dogId,
     required CourseModule module,
     required String videoUrl,
+    String storagePath = '',
+    String videoSource = 'link',
+    int videoSizeBytes = 0,
     required String note,
     required String learnerName,
     required String dogName,
@@ -640,6 +643,11 @@ class FirestoreService {
       'trophyTitle': module.trophyTitle,
       'artKey': module.artKey,
       'videoUrl': videoUrl.trim(),
+      'storagePath': storagePath.trim(),
+      'videoSource': videoSource,
+      'videoSizeBytes': videoSizeBytes,
+      'videoArchived': false,
+      'videoArchiveRequested': false,
       'note': note.trim(),
       'status': 'waiting',
       'feedback': '',
@@ -665,6 +673,112 @@ class FirestoreService {
   Future<void> claimSubmission(String id, String trainerName) =>
       db.collection('submissions').doc(id).update({'assignedTo': trainerName});
 
+  Future<void> setSubmissionVideoArchiveRequested(
+    String submissionId,
+    bool value,
+  ) async {
+    final ref = db.collection('submissions').doc(submissionId);
+    final snap = await ref.get();
+    final data = snap.data() ?? {};
+
+    Timestamp? deleteAfter;
+
+    if (!value) {
+      final reviewedAt = data['reviewedAt'] as Timestamp?;
+
+      if (reviewedAt != null) {
+        deleteAfter = Timestamp.fromDate(
+          reviewedAt.toDate().add(const Duration(days: 30)),
+        );
+      }
+    }
+
+    await ref.update({
+      'videoArchiveRequested': value,
+      'videoArchiveRequestedAt': value ? FieldValue.serverTimestamp() : null,
+      'videoDeleteAfter': value ? null : deleteAfter,
+    });
+  }
+
+  Future<void> setHelpVideoArchiveRequested({
+    required String threadId,
+    required String messageId,
+    required bool value,
+  }) async {
+    final threadRef = db.collection('lessonHelp').doc(threadId);
+    final messageRef = threadRef.collection('messages').doc(messageId);
+
+    final threadSnap = await threadRef.get();
+    final thread = threadSnap.data() ?? {};
+
+    Timestamp? deleteAfter;
+
+    if (!value) {
+      final resolvedAt = thread['resolvedAt'] as Timestamp?;
+
+      if (resolvedAt != null) {
+        deleteAfter = Timestamp.fromDate(
+          resolvedAt.toDate().add(const Duration(days: 30)),
+        );
+      }
+    }
+
+    await messageRef.update({
+      'videoArchiveRequested': value,
+      'videoArchiveRequestedAt': value ? FieldValue.serverTimestamp() : null,
+      'videoDeleteAfter': value ? null : deleteAfter,
+    });
+  }
+
+  Future<void> markSubmissionVideoArchived(
+    String submissionId, {
+    String archiveUrl = '',
+  }) async {
+    final ref = db.collection('submissions').doc(submissionId);
+    final snap = await ref.get();
+    final data = snap.data() ?? {};
+
+    final reviewed = data['reviewedAt'] != null;
+
+    await ref.update({
+      'videoArchived': true,
+      'videoArchivedAt': FieldValue.serverTimestamp(),
+      'videoArchiveRequested': false,
+      'videoArchiveRequestedAt': null,
+      'videoArchiveUrl': archiveUrl.trim(),
+      'videoDeleteAfter': reviewed
+          ? Timestamp.fromDate(DateTime.now().add(const Duration(days: 7)))
+          : null,
+    });
+  }
+
+  Future<void> markHelpVideoArchived({
+    required String threadId,
+    required String messageId,
+    String archiveUrl = '',
+  }) async {
+    final threadRef = db.collection('lessonHelp').doc(threadId);
+    final messageRef = threadRef.collection('messages').doc(messageId);
+
+    final threadSnap = await threadRef.get();
+    final thread = threadSnap.data() ?? {};
+
+    final resolved =
+        thread['resolvedAt'] != null ||
+        (thread['status'] ?? '').toString() == 'resolved';
+
+    await messageRef.update({
+      'videoArchived': true,
+      'videoArchivedAt': FieldValue.serverTimestamp(),
+      'videoArchiveRequested': false,
+      'videoArchiveRequestedAt': null,
+      'videoArchiveUrl': archiveUrl.trim(),
+      'videoDeleteAfter': resolved
+          ? Timestamp.fromDate(DateTime.now().add(const Duration(days: 7)))
+          : null,
+    });
+  }
+
   Future<void> reviewSubmission({
     required String submissionId,
     required String dogId,
@@ -689,11 +803,29 @@ class FirestoreService {
         .doc('first_skill');
     final firstSkillExists = (await firstSkillRef.get()).exists;
     final batch = db.batch();
+    final academyUpload =
+        (sub['videoSource'] ?? '').toString() == 'academy_upload';
+    final archiveRequested = sub['videoArchiveRequested'] == true;
+    final archived = sub['videoArchived'] == true;
+
+    Duration? videoRetention;
+
+    if (academyUpload) {
+      if (archived) {
+        videoRetention = const Duration(days: 7);
+      } else if (!archiveRequested) {
+        videoRetention = const Duration(days: 30);
+      }
+    }
+
     batch.update(db.collection('submissions').doc(submissionId), {
       'status': passed ? 'passed' : 'practise',
       'feedback': feedback.trim(),
       'reviewerName': reviewerName,
       'reviewedAt': FieldValue.serverTimestamp(),
+      'videoDeleteAfter': videoRetention == null
+          ? null
+          : Timestamp.fromDate(DateTime.now().add(videoRetention)),
     });
     if (passed) {
       final trophy = db
@@ -766,6 +898,9 @@ class FirestoreService {
     required String lessonTitle,
     required String message,
     required String videoUrl,
+    String storagePath = '',
+    String videoSource = 'link',
+    int videoSizeBytes = 0,
   }) async {
     final ref = await db.collection('lessonHelp').add({
       'userId': uid,
@@ -788,6 +923,11 @@ class FirestoreService {
       'senderRole': 'learner',
       'message': message.trim(),
       'videoUrl': videoUrl.trim(),
+      'storagePath': storagePath.trim(),
+      'videoSource': videoSource,
+      'videoSizeBytes': videoSizeBytes,
+      'videoArchived': false,
+      'videoArchiveRequested': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
     await notifyStaff(
@@ -844,13 +984,47 @@ class FirestoreService {
       .collection('lessonHelp')
       .doc(threadId)
       .update({'assignedTo': trainerName, 'status': 'in_progress'});
-  Future<void> resolveHelpThread(String threadId) =>
-      db.collection('lessonHelp').doc(threadId).update({
-        'status': 'resolved',
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+  Future<void> resolveHelpThread(String threadId) async {
+    final ref = db.collection('lessonHelp').doc(threadId);
+    final messages = await ref.collection('messages').get();
 
-  // Training diary
+    final batch = db.batch();
+
+    batch.update(ref, {
+      'status': 'resolved',
+      'updatedAt': FieldValue.serverTimestamp(),
+      'resolvedAt': FieldValue.serverTimestamp(),
+    });
+
+    for (final message in messages.docs) {
+      final data = message.data();
+      final academyUpload =
+          (data['videoSource'] ?? '').toString() == 'academy_upload';
+      final archiveRequested = data['videoArchiveRequested'] == true;
+      final archived = data['videoArchived'] == true;
+
+      Duration? videoRetention;
+
+      if (academyUpload) {
+        if (archived) {
+          videoRetention = const Duration(days: 7);
+        } else if (!archiveRequested) {
+          videoRetention = const Duration(days: 30);
+        }
+      }
+
+      if (videoRetention != null) {
+        batch.update(message.reference, {
+          'videoDeleteAfter': Timestamp.fromDate(
+            DateTime.now().add(videoRetention),
+          ),
+        });
+      }
+    }
+
+    await batch.commit();
+  }
+
   Future<void> addTrainingLog({
     required String uid,
     required String dogId,
@@ -1111,7 +1285,8 @@ class FirestoreService {
     await notifyUser(
       uid: uid,
       title: '⚓ Pause scheduled',
-      body: 'This dog will pause at the end of the current paid access period. You can cancel the pause before then.',
+      body:
+          'This dog will pause at the end of the current paid access period. You can cancel the pause before then.',
       type: 'account',
       targetId: dogId,
     );
@@ -1352,7 +1527,8 @@ class FirestoreService {
       await notifyUser(
         uid: uid,
         title: '✅ Payment confirmed',
-        body: 'Your first Academy access is ready. Enter the activation code sent by the Captain/Admin.',
+        body:
+            'Your first Academy access is ready. Enter the activation code sent by the Captain/Admin.',
         type: 'account',
       );
     }

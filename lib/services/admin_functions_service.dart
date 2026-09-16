@@ -1,7 +1,14 @@
 import 'package:cloud_functions/cloud_functions.dart';
 
 class AdminFunctionsService {
-  final FirebaseFunctions functions = FirebaseFunctions.instanceFor(region: 'europe-west2');
+  final FirebaseFunctions functions = FirebaseFunctions.instanceFor(
+    region: 'europe-west2',
+  );
+
+  Future<void> refreshVideoStorageStats() async {
+    final callable = functions.httpsCallable('refreshVideoStorageStats');
+    await callable.call();
+  }
 
   Future<void> permanentlyDeleteAcademyAccount({
     required String targetUid,
@@ -9,6 +16,7 @@ class AdminFunctionsService {
     final callable = functions.httpsCallable('deleteAcademyAccount');
     await callable.call(<String, dynamic>{'targetUid': targetUid});
   }
+
   Future<String> translateAdminText({
     required String text,
     required String sourceLanguage,
@@ -40,5 +48,4 @@ class AdminFunctionsService {
     final data = Map<String, dynamic>.from(result.data as Map);
     return (data['text'] ?? '').toString();
   }
-
 }

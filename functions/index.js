@@ -159,6 +159,115 @@ exports.pushAcademyNotification = onDocumentCreated('notifications/{notification
   await Promise.all(cleanup);
 });
 
+
+async function updateVideoStorageStats(options = {}) {
+  const now = new Date();
+
+  const [videoFiles] = await bucket.getFiles({
+    prefix: 'academyVideos/',
+  });
+
+  let totalBytes = 0;
+
+  for (const file of videoFiles) {
+    const size = Number(file.metadata?.size || 0);
+    if (Number.isFinite(size)) totalBytes += size;
+  }
+
+  const submissions = await db.collection('submissions').get();
+  const helpMessages = await db.collectionGroup('messages').get();
+
+  let temporaryVideos = 0;
+  let awaitingDeletion = 0;
+  let markedToKeep = 0;
+  let archivedToDrive = 0;
+  let waitingAssessmentVideos = 0;
+  let expiredNow = 0;
+
+  function inspectVideo(data, isAssessment = false) {
+    const archiveRequested = data.videoArchiveRequested === true;
+    const archived = data.videoArchived === true;
+
+    if (archived) {
+      archivedToDrive += 1;
+    }
+
+    if (String(data.videoSource || '') !== 'academy_upload') return;
+
+    const deleteAfter = data.videoDeleteAfter?.toDate?.();
+
+    if (!archiveRequested && !archived) {
+      temporaryVideos += 1;
+    }
+
+    if (archiveRequested && !archived) {
+      markedToKeep += 1;
+    }
+
+    if (deleteAfter && !(archiveRequested && !archived)) {
+      awaitingDeletion += 1;
+
+      if (deleteAfter <= now) {
+        expiredNow += 1;
+      }
+    }
+
+    if (
+      isAssessment &&
+      String(data.status || '') === 'waiting'
+    ) {
+      waitingAssessmentVideos += 1;
+    }
+  }
+
+  for (const doc of submissions.docs) {
+    inspectVideo(doc.data(), true);
+  }
+
+  for (const doc of helpMessages.docs) {
+    inspectVideo(doc.data(), false);
+  }
+
+  const stats = {
+    fileCount: videoFiles.length,
+    totalBytes,
+    totalMegabytes: Number(
+      (totalBytes / (1024 * 1024)).toFixed(2),
+    ),
+    totalGigabytes: Number(
+      (totalBytes / (1024 * 1024 * 1024)).toFixed(3),
+    ),
+    temporaryVideos,
+    awaitingDeletion,
+    markedToKeep,
+    archivedToDrive,
+    waitingAssessmentVideos,
+    expiredNow,
+    retentionDays: 30,
+    lastCheckedAt: FieldValue.serverTimestamp(),
+  };
+
+  if (Number.isFinite(options.deletedAssessmentVideos)) {
+    stats.deletedAssessmentVideosLastRun =
+      options.deletedAssessmentVideos;
+  }
+
+  if (Number.isFinite(options.deletedHelpVideos)) {
+    stats.deletedHelpVideosLastRun =
+      options.deletedHelpVideos;
+  }
+
+  await db
+    .collection('settings')
+    .doc('videoStorage')
+    .set(stats, {merge: true});
+
+  return {
+    ...stats,
+    lastCheckedAt: new Date().toISOString(),
+  };
+}
+
 exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: 'Europe/London'}, async () => {
   // V1.4 learner currency is fixed: 1 Doubloon = £5 = 30 days for one dog.
   const cost = 5;
@@ -253,6 +362,120 @@ exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: '
       }
     }
   }
+
+  // ----------------------------------------------------------
+  // V1.4.2 temporary Academy video housekeeping
+  // ----------------------------------------------------------
+  let deletedAssessmentVideos = 0;
+  let deletedHelpVideos = 0;
+
+  try {
+    const dueAssessments = await db
+      .collection('submissions')
+      .where('videoDeleteAfter', '<=', Timestamp.fromDate(now))
+      .get();
+
+    for (const doc of dueAssessments.docs) {
+      const data = doc.data();
+
+      if (String(data.videoSource || '') !== 'academy_upload') continue;
+
+      const archived = data.videoArchived === true;
+
+      if (data.videoArchiveRequested === true && !archived) continue;
+
+      const storagePath = String(data.storagePath || '');
+
+      if (storagePath.startsWith('academyVideos/')) {
+        try {
+          await bucket
+            .file(storagePath)
+            .delete({ignoreNotFound: true});
+        } catch (err) {
+          console.error(
+            `Could not delete assessment video ${storagePath}`,
+            err,
+          );
+
+          // Keep the Firestore record intact so tomorrow's
+          // cleanup can safely retry the Storage deletion.
+          continue;
+        }
+      }
+
+      await doc.ref.update({
+        videoUrl: '',
+        storagePath: '',
+        videoSource: archived ? 'archived' : 'deleted',
+        videoSizeBytes: 0,
+        videoDeletedAt: FieldValue.serverTimestamp(),
+        videoDeleteAfter: null,
+      });
+
+      deletedAssessmentVideos += 1;
+    }
+  } catch (err) {
+    console.error('Assessment video cleanup failed', err);
+  }
+
+  try {
+    const dueHelpVideos = await db
+      .collectionGroup('messages')
+      .where('videoDeleteAfter', '<=', Timestamp.fromDate(now))
+      .get();
+
+    for (const doc of dueHelpVideos.docs) {
+      const data = doc.data();
+
+      if (String(data.videoSource || '') !== 'academy_upload') continue;
+
+      const archived = data.videoArchived === true;
+
+      if (data.videoArchiveRequested === true && !archived) continue;
+
+      const storagePath = String(data.storagePath || '');
+
+      if (storagePath.startsWith('academyVideos/')) {
+        try {
+          await bucket
+            .file(storagePath)
+            .delete({ignoreNotFound: true});
+        } catch (err) {
+          console.error(
+            `Could not delete Help Me video ${storagePath}`,
+            err,
+          );
+
+          // Keep the Firestore record intact so tomorrow's
+          // cleanup can safely retry the Storage deletion.
+          continue;
+        }
+      }
+
+      await doc.ref.update({
+        videoUrl: '',
+        storagePath: '',
+        videoSource: archived ? 'archived' : 'deleted',
+        videoSizeBytes: 0,
+        videoDeletedAt: FieldValue.serverTimestamp(),
+        videoDeleteAfter: null,
+      });
+
+      deletedHelpVideos += 1;
+    }
+  } catch (err) {
+    console.error('Help Me video cleanup failed', err);
+  }
+
+  // Refresh Captain/Admin storage dashboard statistics.
+  try {
+    await updateVideoStorageStats({
+      deletedAssessmentVideos,
+      deletedHelpVideos,
+    });
+  } catch (err) {
+    console.error('Academy video storage calculation failed', err);
+  }
 });
 
 async function deleteQuery(query, recursive = false) {
@@ -321,6 +544,12 @@ exports.deleteAcademyAccount = onCall(async (request) => {
     await bucket.file(`dogs/${dogDoc.id}/profile.jpg`).delete({ignoreNotFound: true}).catch(() => null);
   }
   await bucket.file(`profiles/${targetUid}/profile.jpg`).delete({ignoreNotFound: true}).catch(() => null);
+
+  // Remove assessment/help footage belonging to the deleted learner.
+  await bucket
+    .deleteFiles({prefix: `academyVideos/${targetUid}/`})
+    .catch(() => null);
+
   await db.recursiveDelete(targetRef);
 
   await db.collection('auditLog').add({
@@ -333,6 +562,29 @@ exports.deleteAcademyAccount = onCall(async (request) => {
   return {ok: true, removedDogs: dogIds.length};
 });
 
+
+
+exports.refreshVideoStorageStats = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in first.');
+  }
+
+  const caller = await db
+    .collection('users')
+    .doc(request.auth.uid)
+    .get();
+
+  const role = String(caller.data()?.role || '');
+
+  if (!['admin', 'captain'].includes(role)) {
+    throw new HttpsError(
+      'permission-denied',
+      'Admin/Captain access required.',
+    );
+  }
+
+  return await updateVideoStorageStats();
+});
 
 exports.translateAdminText = onCall(async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in first.');

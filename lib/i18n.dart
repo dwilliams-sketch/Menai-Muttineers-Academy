@@ -351,6 +351,48 @@ String _pirateTr(String input) {
 }
 
 const Map<String, String> _pirate = {
+  // V1.4.2 video storage dashboard
+  'Academy Video Storage': 'Captain’s Video Hold',
+  'Temporary learner assessment and Help Me footage.':
+      'Temporary moving pictures stored below deck.',
+  'Videos stored': 'Videos aboard',
+  'Storage used': 'Cargo space used',
+  'Temporary videos': 'Temporary cargo',
+  'Awaiting deletion': 'Ready to go overboard',
+  'Marked to keep': 'Marked for the Captain',
+  'Waiting assessments': 'Waiting Captain’s checks',
+  'Safely archived': 'Safely stowed ashore',
+  'Deleted last cleanup': 'Thrown overboard last cleanup',
+  'Last storage check': 'Last hold inspection',
+  'No storage check has run yet.':
+      'The Captain has not inspected the video hold yet.',
+  'REFRESH STORAGE': 'INSPECT VIDEO HOLD',
+  'Checking storage...': 'Inspecting the hold...',
+  'Storage refreshed.': 'Video hold inspected.',
+  'Could not refresh storage right now.':
+      'Could not inspect the video hold right now.',
+  'Not checked yet': 'Not inspected yet',
+  'Temporary Academy videos are removed 30 days after an assessment is reviewed or a Help Me conversation is resolved, unless you mark them to keep.': 'Temporary videos go overboard 30 days after review or resolution unless the Captain marks them to keep.',
+  // V1.4.2 learner video uploads
+  'That video is too large. Please choose a shorter clip under 100 MB.': 'That moving picture is too heavy for the ship! Choose a shorter clip under 100 MB.',
+  'We could not upload that video. Please try again or use a video link instead.': 'We could not haul that video aboard. Try again or use a video link instead.',
+  'We could not remove that video. Please try again.':
+      'We could not throw that video overboard. Try again.',
+  'Please record a video, choose one from your phone, or add a video link.':
+      'Record a video, choose one from your phone, or send us a video link.',
+  'Send us a short video showing the skill. The easiest option is to record one now or choose one already on your phone.': 'Send the crew a short video showing the skill. Record one now or choose one already on your phone.',
+  'RECORD VIDEO NOW': 'RECORD VIDEO NOW',
+  'CHOOSE FROM PHONE': 'CHOOSE FROM PHONE',
+  'Uploading your video...': 'Hauling your video aboard...',
+  'Video ready': 'Video aboard and ready',
+  'OR USE A LINK': 'OR SEND A LINK',
+  'Video link': 'Video link',
+  'Keep clips short and clear. Recordings are limited to 90 seconds and Academy uploads have a 100 MB maximum.': 'Keep clips short and clear, matey — 90 seconds maximum and no more than 100 MB.',
+  'Tell the trainers what is happening. You can also send us a short video so we can see exactly what you mean.': 'Tell the trainers what is going wrong, and send a short video if it helps us see the trouble.',
+  'Show us the problem': 'Show the crew the problem',
+  'RECORD VIDEO': 'RECORD VIDEO',
+  'A short clip is normally plenty. Recordings are limited to 90 seconds.':
+      'A short clip is normally plenty — keep it under 90 seconds.',
   // Core Academy
   'Menai Muttineers Academy': 'Menai Muttineers Academy',
   'Academy V1.4': 'Academy V1.4 — Pirate Mode',
@@ -470,6 +512,19 @@ const Map<String, String> _pirate = {
   'Listening… speak your reply.': 'Listening… speak, matey.',
 
   // Common actions
+  'Watch in app': 'WATCH ABOARD',
+  'Download / open original': 'TAKE A COPY ASHORE',
+  'Keep for records': 'STOW IN THE CAPTAIN’S ARCHIVE',
+  'Kept for records': 'STOWED FOR THE CAPTAIN',
+  'MARK SAFELY ARCHIVED': 'STOW SAFELY IN THE ARCHIVE',
+  'Archive copy saved?': 'Copy safely stowed?',
+  'Download the video and save it somewhere permanent first. You can paste the Drive or folder link below if you want.': 'Take a copy ashore and stow it somewhere safe first. Add the treasure-map link below if ye have one.',
+  'Archive link (optional)': 'Archive treasure-map link (optional)',
+  'CONFIRM ARCHIVED': 'AYE — SAFELY STOWED',
+  'Video marked safely archived.': 'Video marked safely stowed in the archive.',
+  'Video could not be played here.':
+      'This moving picture could not be played aboard.',
+
   'Cancel': 'BELAY THAT',
   'Other': 'Something Else',
   'Open video': 'WATCH VIDEO',
@@ -577,6 +632,49 @@ class I18nText extends StatelessWidget {
 }
 
 const Map<String, String> _cy = {
+  // V1.4.2 video storage dashboard
+  'Academy Video Storage': 'Storfa Fideos yr Academi',
+  'Temporary learner assessment and Help Me footage.':
+      'Fideos dros dro o asesiadau dysgwyr a cheisiadau Help Me.',
+  'Videos stored': 'Fideos wedi’u storio',
+  'Storage used': 'Storfa a ddefnyddiwyd',
+  'Temporary videos': 'Fideos dros dro',
+  'Awaiting deletion': 'Yn aros i gael eu dileu',
+  'Marked to keep': 'Wedi’u marcio i’w cadw',
+  'Waiting assessments': 'Asesiadau sy’n aros',
+  'Safely archived': 'Wedi’i archifo’n ddiogel',
+  'Deleted last cleanup': 'Wedi’u dileu yn y glanhau diwethaf',
+  'Last storage check': 'Gwiriad storfa diwethaf',
+  'No storage check has run yet.': 'Nid oes gwiriad storfa wedi rhedeg eto.',
+  'REFRESH STORAGE': 'ADNEWYDDU’R STORFA',
+  'Checking storage...': 'Yn gwirio’r storfa...',
+  'Storage refreshed.': 'Storfa wedi’i hadnewyddu.',
+  'Could not refresh storage right now.':
+      'Ni ellid adnewyddu’r storfa ar hyn o bryd.',
+  'Not checked yet': 'Heb ei wirio eto',
+  'Temporary Academy videos are removed 30 days after an assessment is reviewed or a Help Me conversation is resolved, unless you mark them to keep.': 'Caiff fideos dros dro yr Academi eu dileu 30 diwrnod ar ôl i asesiad gael ei adolygu neu sgwrs Help Me gael ei datrys, oni bai eich bod yn eu marcio i’w cadw.',
+  // V1.4.2 learner video uploads
+  'That video is too large. Please choose a shorter clip under 100 MB.':
+      'Mae’r fideo hwnnw’n rhy fawr. Dewiswch glip byrrach o dan 100 MB.',
+  'We could not upload that video. Please try again or use a video link instead.': 'Ni allem uwchlwytho’r fideo hwnnw. Rhowch gynnig arall arni neu defnyddiwch ddolen fideo yn lle.',
+  'We could not remove that video. Please try again.':
+      'Ni allem dynnu’r fideo hwnnw. Rhowch gynnig arall arni.',
+  'Please record a video, choose one from your phone, or add a video link.':
+      'Recordiwch fideo, dewiswch un o’ch ffôn, neu ychwanegwch ddolen fideo.',
+  'Send us a short video showing the skill. The easiest option is to record one now or choose one already on your phone.': 'Anfonwch fideo byr atom yn dangos y sgil. Y ffordd hawsaf yw recordio un nawr neu ddewis un sydd eisoes ar eich ffôn.',
+  'RECORD VIDEO NOW': 'RECORDIO FIDEO NAWR',
+  'CHOOSE FROM PHONE': 'DEWIS O’R FFÔN',
+  'Uploading your video...': 'Yn uwchlwytho eich fideo...',
+  'Video ready': 'Fideo yn barod',
+  'OR USE A LINK': 'NEU DEFNYDDIO DOLEN',
+  'Video link': 'Dolen fideo',
+  'YouTube / Google Drive / iCloud / other share link':
+      'YouTube / Google Drive / iCloud / dolen rannu arall',
+  'Keep clips short and clear. Recordings are limited to 90 seconds and Academy uploads have a 100 MB maximum.': 'Cadwch y clipiau’n fyr ac yn glir. Mae recordiadau wedi’u cyfyngu i 90 eiliad ac mae uchafswm o 100 MB ar uwchlwythiadau’r Academi.',
+  'Tell the trainers what is happening. You can also send us a short video so we can see exactly what you mean.': 'Dywedwch wrth yr hyfforddwyr beth sy’n digwydd. Gallwch hefyd anfon fideo byr atom fel y gallwn weld yn union beth rydych yn ei olygu.',
+  'Show us the problem': 'Dangoswch y broblem i ni',
+  'RECORD VIDEO': 'RECORDIO FIDEO',
+  'A short clip is normally plenty. Recordings are limited to 90 seconds.': 'Mae clip byr fel arfer yn ddigon. Mae recordiadau wedi’u cyfyngu i 90 eiliad.',
   // Core navigation and account flow
   'Menai Muttineers Academy': 'Academi Menai Muttineers',
   'Academy V1.4': 'Academi V1.4',
@@ -607,6 +705,18 @@ const Map<String, String> _cy = {
   'Enter the email address you used for the Academy. We’ll send a secure reset link.': 'Rhowch y cyfeiriad e-bost a ddefnyddiwyd gennych ar gyfer yr Academi. Byddwn yn anfon dolen ailosod ddiogel.',
   'Send reset link': 'Anfon dolen ailosod',
   'Cancel': 'Canslo',
+  'Watch in app': 'Gwylio yn yr ap',
+  'Download / open original': 'Lawrlwytho / agor y gwreiddiol',
+  'Keep for records': 'Cadw ar gyfer cofnodion',
+  'Kept for records': 'Wedi’i gadw ar gyfer cofnodion',
+  'MARK SAFELY ARCHIVED': 'MARCIO WEDI’I ARCHIFO’N DDIOGEL',
+  'Archive copy saved?': 'Copi archif wedi’i gadw?',
+  'Download the video and save it somewhere permanent first. You can paste the Drive or folder link below if you want.': 'Lawrlwythwch y fideo a’i gadw mewn lle parhaol yn gyntaf. Gallwch ludo dolen Drive neu ffolder isod os dymunwch.',
+  'Archive link (optional)': 'Dolen archif (dewisol)',
+  'CONFIRM ARCHIVED': 'CADARNHAU WEDI’I ARCHIFO',
+  'Video marked safely archived.':
+      'Fideo wedi’i farcio fel wedi’i archifo’n ddiogel.',
+  'Video could not be played here.': 'Ni ellid chwarae’r fideo yma.',
   'Back to account choices': 'Yn ôl i’r dewisiadau cyfrif',
   'Welcome aboard — we’ll set you up in three simple steps.':
       'Croeso ar fwrdd — byddwn yn eich sefydlu mewn tri cham syml.',

@@ -10,6 +10,7 @@ import '../i18n.dart';
 
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 import '../course_data.dart';
 import '../models.dart';
@@ -724,6 +725,13 @@ class ReviewQueue extends StatelessWidget {
         children: docs.map((d) {
           final m = d.data();
           final assigned = (m['assignedTo'] ?? '').toString();
+          final videoUrl = (m['videoUrl'] ?? '').toString();
+          final academyUpload =
+              videoUrl.isNotEmpty &&
+              (m['videoSource'] ?? '').toString() == 'academy_upload';
+          final keepForRecords = m['videoArchiveRequested'] == true;
+          final safelyArchived = m['videoArchived'] == true;
+
           return Card(
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -742,14 +750,83 @@ class ReviewQueue extends StatelessWidget {
                     spacing: 7,
                     runSpacing: 7,
                     children: [
-                      if ((m['videoUrl'] ?? '').toString().isNotEmpty)
+                      if (videoUrl.isNotEmpty && academyUpload)
+                        FilledButton.tonalIcon(
+                          onPressed: () => _watchAcademyVideo(
+                            context,
+                            url: videoUrl,
+                            title: (m['moduleTitle'] ?? 'Video').toString(),
+                          ),
+                          icon: const Icon(Icons.play_circle),
+                          label: const I18nText('Watch in app'),
+                        )
+                      else if (videoUrl.isNotEmpty)
                         OutlinedButton.icon(
                           onPressed: () async {
-                            final u = Uri.tryParse(m['videoUrl']);
+                            final u = Uri.tryParse(videoUrl);
                             if (u != null) await launchUrl(u);
                           },
-                          icon: const Icon(Icons.play_circle),
-                          label: const I18nText('Video'),
+                          icon: const Icon(Icons.open_in_new),
+                          label: const I18nText('Open video'),
+                        ),
+                      if (academyUpload)
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            final u = Uri.tryParse(videoUrl);
+                            if (u != null) await launchUrl(u);
+                          },
+                          icon: const Icon(Icons.open_in_new),
+                          label: const I18nText('Download / open original'),
+                        ),
+                      if (academyUpload && !safelyArchived)
+                        OutlinedButton.icon(
+                          onPressed: () =>
+                              service.setSubmissionVideoArchiveRequested(
+                                d.id,
+                                !keepForRecords,
+                              ),
+                          icon: Icon(
+                            keepForRecords
+                                ? Icons.bookmark
+                                : Icons.bookmark_border,
+                          ),
+                          label: I18nText(
+                            keepForRecords
+                                ? 'Kept for records'
+                                : 'Keep for records',
+                          ),
+                        ),
+                      if (academyUpload && keepForRecords && !safelyArchived)
+                        FilledButton.tonalIcon(
+                          onPressed: () async {
+                            final archiveUrl = await _confirmVideoArchived(
+                              context,
+                            );
+
+                            if (archiveUrl == null) return;
+
+                            await service.markSubmissionVideoArchived(
+                              d.id,
+                              archiveUrl: archiveUrl,
+                            );
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: I18nText(
+                                    'Video marked safely archived.',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.inventory_2),
+                          label: const I18nText('MARK SAFELY ARCHIVED'),
+                        ),
+                      if (safelyArchived)
+                        const Chip(
+                          avatar: Icon(Icons.verified, size: 18),
+                          label: I18nText('Safely archived'),
                         ),
                       if (assigned.isEmpty)
                         OutlinedButton(
@@ -839,6 +916,196 @@ class HelpQueue extends StatelessWidget {
             ),
           );
         }).toList(),
+      );
+    },
+  );
+}
+
+Future<String?> _confirmVideoArchived(BuildContext context) async {
+  final archiveLink = TextEditingController();
+
+  final result = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const I18nText('Archive copy saved?'),
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const I18nText(
+              'Download the video and save it somewhere permanent first. You can paste the Drive or folder link below if you want.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: archiveLink,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.link),
+                label: I18nText('Archive link (optional)'),
+                hintText: 'https://drive.google.com/...',
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const I18nText('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: () =>
+              Navigator.pop(dialogContext, archiveLink.text.trim()),
+          icon: const Icon(Icons.verified),
+          label: const I18nText('CONFIRM ARCHIVED'),
+        ),
+      ],
+    ),
+  );
+
+  archiveLink.dispose();
+  return result;
+}
+
+Future<void> _watchAcademyVideo(
+  BuildContext context, {
+  required String url,
+  required String title,
+}) async {
+  final uri = Uri.tryParse(url);
+
+  if (uri == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: I18nText('Video could not be played here.')),
+    );
+    return;
+  }
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: I18nText(title),
+      content: SizedBox(width: 720, child: _AcademyVideoPlayer(url: url)),
+      actions: [
+        TextButton.icon(
+          onPressed: () => launchUrl(uri),
+          icon: const Icon(Icons.open_in_new),
+          label: const I18nText('Download / open original'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const I18nText('Cancel'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _AcademyVideoPlayer extends StatefulWidget {
+  final String url;
+
+  const _AcademyVideoPlayer({required this.url});
+
+  @override
+  State<_AcademyVideoPlayer> createState() => _AcademyVideoPlayerState();
+}
+
+class _AcademyVideoPlayerState extends State<_AcademyVideoPlayer> {
+  late final VideoPlayerController controller;
+  late final Future<void> initialise;
+
+  @override
+  void initState() {
+    super.initState();
+
+    controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    initialise = controller.initialize();
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<void>(
+    future: initialise,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return const Padding(
+          padding: EdgeInsets.all(16),
+          child: I18nText(
+            'Video could not be played here.',
+            textAlign: TextAlign.center,
+          ),
+        );
+      }
+
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Padding(
+          padding: EdgeInsets.all(24),
+          child: Center(child: CircularProgressIndicator()),
+        );
+      }
+
+      final aspectRatio = controller.value.aspectRatio > 0
+          ? controller.value.aspectRatio
+          : 16 / 9;
+
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: AspectRatio(
+              aspectRatio: aspectRatio,
+              child: VideoPlayer(controller),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ValueListenableBuilder<VideoPlayerValue>(
+            valueListenable: controller,
+            builder: (context, value, _) {
+              final durationMs = value.duration.inMilliseconds;
+              final positionMs = value.position.inMilliseconds.clamp(
+                0,
+                durationMs > 0 ? durationMs : 1,
+              );
+
+              return Row(
+                children: [
+                  IconButton.filledTonal(
+                    onPressed: () {
+                      if (value.isPlaying) {
+                        controller.pause();
+                      } else {
+                        controller.play();
+                      }
+                    },
+                    icon: Icon(
+                      value.isPlaying ? Icons.pause : Icons.play_arrow,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Slider(
+                      value: positionMs.toDouble(),
+                      max: (durationMs > 0 ? durationMs : 1).toDouble(),
+                      onChanged: durationMs <= 0
+                          ? null
+                          : (v) => controller.seekTo(
+                              Duration(milliseconds: v.round()),
+                            ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
       );
     },
   );
@@ -1103,13 +1370,11 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                   final builtIns = <Map<String, String>>[
                     {
                       'title': 'Shorter session',
-                      'text':
-                          'Try making the next session much shorter and finish while your dog is still keen.',
+                      'text': 'Try making the next session much shorter and finish while your dog is still keen.',
                     },
                     {
                       'title': 'Another angle',
-                      'text':
-                          'Could you send us another short video from the side so we can see the movement more clearly?',
+                      'text': 'Could you send us another short video from the side so we can see the movement more clearly?',
                     },
                   ];
                   final saved = (snap.data?.docs ?? [])
@@ -1161,6 +1426,13 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                 children: docs.map((d) {
                   final m = d.data();
                   final staff = (m['senderRole'] ?? '') != 'learner';
+                  final videoUrl = (m['videoUrl'] ?? '').toString();
+                  final academyUpload =
+                      videoUrl.isNotEmpty &&
+                      (m['videoSource'] ?? '').toString() == 'academy_upload';
+                  final keepForRecords = m['videoArchiveRequested'] == true;
+                  final safelyArchived = m['videoArchived'] == true;
+
                   return Align(
                     alignment: staff
                         ? Alignment.centerRight
@@ -1184,14 +1456,107 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                           ),
                           if ((m['message'] ?? '').toString().trim().isNotEmpty)
                             Text((m['message'] ?? '').toString()),
-                          if ((m['videoUrl'] ?? '').toString().isNotEmpty)
-                            TextButton.icon(
-                              onPressed: () async {
-                                final u = Uri.tryParse(m['videoUrl']);
-                                if (u != null) await launchUrl(u);
-                              },
-                              icon: const Icon(Icons.play_circle),
-                              label: const I18nText('Open video'),
+                          if (videoUrl.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  if (academyUpload)
+                                    FilledButton.tonalIcon(
+                                      onPressed: () => _watchAcademyVideo(
+                                        context,
+                                        url: videoUrl,
+                                        title:
+                                            (widget.thread['lessonTitle'] ??
+                                                    'Video')
+                                                .toString(),
+                                      ),
+                                      icon: const Icon(Icons.play_circle),
+                                      label: const I18nText('Watch in app'),
+                                    )
+                                  else
+                                    TextButton.icon(
+                                      onPressed: () async {
+                                        final u = Uri.tryParse(videoUrl);
+                                        if (u != null) await launchUrl(u);
+                                      },
+                                      icon: const Icon(Icons.open_in_new),
+                                      label: const I18nText('Open video'),
+                                    ),
+                                  if (academyUpload)
+                                    TextButton.icon(
+                                      onPressed: () async {
+                                        final u = Uri.tryParse(videoUrl);
+                                        if (u != null) await launchUrl(u);
+                                      },
+                                      icon: const Icon(Icons.open_in_new),
+                                      label: const I18nText(
+                                        'Download / open original',
+                                      ),
+                                    ),
+                                  if (academyUpload && !safelyArchived)
+                                    TextButton.icon(
+                                      onPressed: () =>
+                                          service.setHelpVideoArchiveRequested(
+                                            threadId: widget.threadId,
+                                            messageId: d.id,
+                                            value: !keepForRecords,
+                                          ),
+                                      icon: Icon(
+                                        keepForRecords
+                                            ? Icons.bookmark
+                                            : Icons.bookmark_border,
+                                      ),
+                                      label: I18nText(
+                                        keepForRecords
+                                            ? 'Kept for records'
+                                            : 'Keep for records',
+                                      ),
+                                    ),
+                                  if (academyUpload &&
+                                      keepForRecords &&
+                                      !safelyArchived)
+                                    FilledButton.tonalIcon(
+                                      onPressed: () async {
+                                        final archiveUrl =
+                                            await _confirmVideoArchived(
+                                              context,
+                                            );
+
+                                        if (archiveUrl == null) return;
+
+                                        await service.markHelpVideoArchived(
+                                          threadId: widget.threadId,
+                                          messageId: d.id,
+                                          archiveUrl: archiveUrl,
+                                        );
+
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: I18nText(
+                                                'Video marked safely archived.',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      icon: const Icon(Icons.inventory_2),
+                                      label: const I18nText(
+                                        'MARK SAFELY ARCHIVED',
+                                      ),
+                                    ),
+                                  if (safelyArchived)
+                                    const Chip(
+                                      avatar: Icon(Icons.verified, size: 18),
+                                      label: I18nText('Safely archived'),
+                                    ),
+                                ],
+                              ),
                             ),
                         ],
                       ),
@@ -3199,6 +3564,8 @@ class _StaffControlState extends State<StaffControl> {
           ),
         ),
       ),
+      if (widget.profile.isCaptain || widget.profile.isAdmin)
+        VideoStoragePanel(profile: widget.profile),
       if (widget.profile.canManageAccounts)
         RoleManager(profile: widget.profile),
       if (widget.profile.canManageAccounts)
@@ -3223,6 +3590,256 @@ class _StaffControlState extends State<StaffControl> {
       if (widget.profile.canManageAccounts) AuditLogPanel(),
       if (widget.profile.canManageAccounts) SystemHealth(),
     ],
+  );
+}
+
+class VideoStoragePanel extends StatefulWidget {
+  final AppUser profile;
+
+  const VideoStoragePanel({super.key, required this.profile});
+
+  @override
+  State<VideoStoragePanel> createState() => _VideoStoragePanelState();
+}
+
+class _VideoStoragePanelState extends State<VideoStoragePanel> {
+  final service = FirestoreService();
+  final functions = AdminFunctionsService();
+
+  bool refreshing = false;
+
+  Future<void> _refresh() async {
+    if (refreshing) return;
+
+    setState(() => refreshing = true);
+
+    try {
+      await functions.refreshVideoStorageStats();
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: I18nText('Storage refreshed.')));
+      }
+    } catch (error) {
+      debugPrint('Video storage refresh failed: $error');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: I18nText('Could not refresh storage right now.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => refreshing = false);
+      }
+    }
+  }
+
+  String _storageText(Map<String, dynamic> data) {
+    final gb = (data['totalGigabytes'] as num?)?.toDouble() ?? 0;
+    final mb = (data['totalMegabytes'] as num?)?.toDouble() ?? 0;
+
+    if (gb >= 1) {
+      return '${gb.toStringAsFixed(2)} GB';
+    }
+
+    return '${mb.toStringAsFixed(1)} MB';
+  }
+
+  String _lastChecked(dynamic value) {
+    if (value is! Timestamp) return tr('Not checked yet');
+
+    final date = value.toDate().toLocal();
+
+    String two(int n) => n.toString().padLeft(2, '0');
+
+    return '${two(date.day)}/${two(date.month)}/${date.year} '
+        '${two(date.hour)}:${two(date.minute)}';
+  }
+
+  @override
+  Widget build(BuildContext context) => ExpansionTile(
+    leading: const Icon(Icons.video_library),
+    title: const I18nText('Academy Video Storage'),
+    subtitle: const I18nText(
+      'Temporary learner assessment and Help Me footage.',
+    ),
+    childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+    children: [
+      StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: service.db
+            .collection('settings')
+            .doc('videoStorage')
+            .snapshots(),
+        builder: (context, snap) {
+          final data = snap.data?.data();
+
+          if (data == null) {
+            return Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: I18nText(
+                    'No storage check has run yet.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: refreshing ? null : _refresh,
+                  icon: refreshing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                  label: I18nText(
+                    refreshing ? 'Checking storage...' : 'REFRESH STORAGE',
+                  ),
+                ),
+              ],
+            );
+          }
+
+          final deletedLastRun =
+              ((data['deletedAssessmentVideosLastRun'] as num?)?.toInt() ?? 0) +
+              ((data['deletedHelpVideosLastRun'] as num?)?.toInt() ?? 0);
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _VideoStorageMetric(
+                    icon: Icons.video_file,
+                    label: 'Videos stored',
+                    value: '${data['fileCount'] ?? 0}',
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.cloud,
+                    label: 'Storage used',
+                    value: _storageText(data),
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.hourglass_bottom,
+                    label: 'Temporary videos',
+                    value: '${data['temporaryVideos'] ?? 0}',
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.delete_sweep,
+                    label: 'Awaiting deletion',
+                    value: '${data['awaitingDeletion'] ?? 0}',
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.bookmark,
+                    label: 'Marked to keep',
+                    value: '${data['markedToKeep'] ?? 0}',
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.fact_check,
+                    label: 'Waiting assessments',
+                    value: '${data['waitingAssessmentVideos'] ?? 0}',
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.archive,
+                    label: 'Safely archived',
+                    value: '${data['archivedToDrive'] ?? 0}',
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.cleaning_services,
+                    label: 'Deleted last cleanup',
+                    value: '$deletedLastRun',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.schedule),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const I18nText(
+                              'Last storage check',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            Text(_lastChecked(data['lastCheckedAt'])),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: I18nText(
+                  'Temporary Academy videos are removed 30 days after an assessment is reviewed or a Help Me conversation is resolved, unless you mark them to keep.',
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonalIcon(
+                  onPressed: refreshing ? null : _refresh,
+                  icon: refreshing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                  label: I18nText(
+                    refreshing ? 'Checking storage...' : 'REFRESH STORAGE',
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    ],
+  );
+}
+
+class _VideoStorageMetric extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _VideoStorageMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 170,
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon),
+            const SizedBox(height: 8),
+            Text(value, style: Theme.of(context).textTheme.headlineSmall),
+            I18nText(label),
+          ],
+        ),
+      ),
+    ),
   );
 }
 
