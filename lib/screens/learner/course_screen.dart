@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -111,6 +113,7 @@ class _ModuleScreenState extends State<ModuleScreen> {
   final note = TextEditingController();
   bool busy = false;
   bool uploadingVideo = false;
+  bool assessmentSubmitted = false;
   UploadedAcademyVideo? uploadedAssessmentVideo;
   bool ready1 = false, ready2 = false, ready3 = false, ready4 = false;
 
@@ -126,14 +129,19 @@ class _ModuleScreenState extends State<ModuleScreen> {
 
       if (result == null) return;
 
+      if (!mounted) {
+        try {
+          await media.deleteAcademyVideo(result.storagePath);
+        } catch (_) {}
+        return;
+      }
+
       final previous = uploadedAssessmentVideo;
 
-      if (mounted) {
-        setState(() {
-          uploadedAssessmentVideo = result;
-          video.clear();
-        });
-      }
+      setState(() {
+        uploadedAssessmentVideo = result;
+        video.clear();
+      });
 
       if (previous != null && previous.storagePath != result.storagePath) {
         try {
@@ -227,6 +235,9 @@ class _ModuleScreenState extends State<ModuleScreen> {
       learnerName: widget.profile.name,
       dogName: widget.dog.name,
     );
+
+    assessmentSubmitted = true;
+
     if (mounted) {
       video.clear();
       note.clear();
@@ -242,6 +253,14 @@ class _ModuleScreenState extends State<ModuleScreen> {
 
   @override
   void dispose() {
+    final abandonedVideo = uploadedAssessmentVideo;
+
+    if (!assessmentSubmitted && abandonedVideo != null) {
+      unawaited(
+        media.deleteAcademyVideo(abandonedVideo.storagePath).catchError((_) {}),
+      );
+    }
+
     video.dispose();
     note.dispose();
     super.dispose();
