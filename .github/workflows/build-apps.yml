@@ -259,7 +259,7 @@ jobs:
         env:
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
-          flutter build web --release --base-href "/${REPO_NAME}/" \
+          flutter build web --release --base-href "/" \
             --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }} \
             --dart-define=FIREBASE_ANDROID_APP_ID=${{ secrets.FIREBASE_ANDROID_APP_ID }} \
             --dart-define=FIREBASE_WEB_APP_ID=${{ secrets.FIREBASE_WEB_APP_ID }} \
