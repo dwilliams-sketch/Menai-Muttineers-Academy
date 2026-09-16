@@ -1,5 +1,28 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// Academy currency shown to learners. Money is still stored in pounds in Firestore
+// for accounting/backwards compatibility, but the learner experience uses Doubloons.
+const double academyDoubloonPounds = 5.0;
+const int academyDoubloonAccessDays = 30;
+
+double poundsToDoubloons(double pounds) => pounds / academyDoubloonPounds;
+double doubloonsToPounds(double doubloons) => doubloons * academyDoubloonPounds;
+
+String formatDoubloonNumber(double value) {
+  if ((value - value.roundToDouble()).abs() < 0.0001)
+    return value.toInt().toString();
+  return value
+      .toStringAsFixed(2)
+      .replaceFirst(RegExp(r'0+$'), '')
+      .replaceFirst(RegExp(r'\.$'), '');
+}
+
+String doubloonBalanceLabel(double pounds) {
+  final count = poundsToDoubloons(pounds);
+  final word = (count - 1).abs() < 0.0001 ? 'Doubloon' : 'Doubloons';
+  return '${formatDoubloonNumber(count)} $word';
+}
+
 DateTime? dateFrom(dynamic value) {
   if (value is Timestamp) return value.toDate();
   if (value is DateTime) return value;
@@ -75,7 +98,11 @@ class AppUser {
       name: (d['name'] ?? '').toString(),
       email: (d['email'] ?? '').toString(),
       phone: (d['phone'] ?? '').toString(),
-      languageCode: (d['languageCode'] ?? 'en').toString() == 'cy' ? 'cy' : 'en',
+      languageCode: switch ((d['languageCode'] ?? 'en').toString()) {
+        'cy' => 'cy',
+        'pirate' => 'pirate',
+        _ => 'en',
+      },
       role: (d['role'] ?? 'learner').toString(),
       paymentStatus: (d['paymentStatus'] ?? 'unpaid').toString(),
       paymentMethod: (d['paymentMethod'] ?? '').toString(),
@@ -90,7 +117,9 @@ class AppUser {
       backgroundMode: (d['backgroundMode'] ?? 'rotate').toString(),
       backgroundChoice: (d['backgroundChoice'] ?? 'cove').toString(),
       musicEnabled: d['musicEnabled'] == true,
-      musicVolume: ((d['musicVolume'] as num?)?.toDouble() ?? 0.22).clamp(0.0, 1.0).toDouble(),
+      musicVolume: ((d['musicVolume'] as num?)?.toDouble() ?? 0.22)
+          .clamp(0.0, 1.0)
+          .toDouble(),
       reducedMotion: d['reducedMotion'] == true,
       timerSound: (d['timerSound'] ?? 'parrot').toString(),
       discoverable: d['discoverable'] == true,
@@ -108,7 +137,8 @@ class AppUser {
   bool get isStaff => isTrainer || isAdmin || isCaptain;
   bool get canManageAccounts => isAdmin || isCaptain;
   bool get canSeeReports => isCaptain || isAdmin;
-  bool get isPaid => paymentStatus == 'paid' || paymentStatus == 'complimentary';
+  bool get isPaid =>
+      paymentStatus == 'paid' || paymentStatus == 'complimentary';
 }
 
 class DogProfile {
@@ -169,7 +199,9 @@ class DogProfile {
 
   String effectiveStatus(AppUser owner) {
     if (academyStatus.isNotEmpty) {
-      if (academyStatus == 'active' && accessUntil != null && accessUntil!.isBefore(DateTime.now())) {
+      if (academyStatus == 'active' &&
+          accessUntil != null &&
+          accessUntil!.isBefore(DateTime.now())) {
         return pauseRequested ? 'paused' : 'renewal_due';
       }
       return academyStatus;
@@ -202,7 +234,9 @@ class AcademyNotification {
     required this.createdAt,
   });
 
-  factory AcademyNotification.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory AcademyNotification.fromDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final d = doc.data() ?? {};
     return AcademyNotification(
       id: doc.id,
@@ -248,20 +282,23 @@ class AppLinks {
   });
 
   factory AppLinks.fromMap(Map<String, dynamic> d) => AppLinks(
-        facebook: (d['facebook'] ?? '').toString(),
-        instagram: (d['instagram'] ?? '').toString(),
-        tiktok: (d['tiktok'] ?? '').toString(),
-        youtube: (d['youtube'] ?? '').toString(),
-        website: (d['website'] ?? '').toString(),
-        easyfundraising: (d['easyfundraising'] ?? '').toString(),
-        gofundme: (d['gofundme'] ?? '').toString(),
-        bankName: (d['bankName'] ?? '').toString(),
-        accountName: (d['accountName'] ?? 'Menai Muttineers').toString(),
-        sortCode: (d['sortCode'] ?? '').toString(),
-        accountNumber: (d['accountNumber'] ?? '').toString(),
-        directDebitInfo: (d['directDebitInfo'] ?? '').toString(),
-        paymentNote: (d['paymentNote'] ?? 'Please use the payment reference shown in your account.').toString(),
-      );
+    facebook: (d['facebook'] ?? '').toString(),
+    instagram: (d['instagram'] ?? '').toString(),
+    tiktok: (d['tiktok'] ?? '').toString(),
+    youtube: (d['youtube'] ?? '').toString(),
+    website: (d['website'] ?? '').toString(),
+    easyfundraising: (d['easyfundraising'] ?? '').toString(),
+    gofundme: (d['gofundme'] ?? '').toString(),
+    bankName: (d['bankName'] ?? '').toString(),
+    accountName: (d['accountName'] ?? 'Menai Muttineers').toString(),
+    sortCode: (d['sortCode'] ?? '').toString(),
+    accountNumber: (d['accountNumber'] ?? '').toString(),
+    directDebitInfo: (d['directDebitInfo'] ?? '').toString(),
+    paymentNote:
+        (d['paymentNote'] ??
+                'Please use the payment reference shown in your account.')
+            .toString(),
+  );
 }
 
 class AcademyConfig {
@@ -284,18 +321,20 @@ class AcademyConfig {
   });
 
   factory AcademyConfig.fromMap(Map<String, dynamic> d) => AcademyConfig(
-        dogPeriodCost: (d['dogPeriodCost'] as num?)?.toDouble() ?? 5.0,
-        dogPeriodDays: (d['dogPeriodDays'] as num?)?.toInt() ?? 30,
-        oneToOneWording: (d['oneToOneWording'] ??
+    dogPeriodCost: (d['dogPeriodCost'] as num?)?.toDouble() ?? 5.0,
+    dogPeriodDays: (d['dogPeriodDays'] as num?)?.toInt() ?? 30,
+    oneToOneWording:
+        (d['oneToOneWording'] ??
                 '1-to-1 sessions are charged separately from Academy access. The trainer will confirm the length and price for your needs. You can request one whether your dog’s Academy adventure is active or paused.')
             .toString(),
-        oneToOneGuidePrice: (d['oneToOneGuidePrice'] as num?)?.toDouble() ?? 30.0,
-        oneToOneGuideMinutes: (d['oneToOneGuideMinutes'] as num?)?.toInt() ?? 60,
-        paymentReferenceSuffix: (d['paymentReferenceSuffix'] ?? '007').toString(),
-        accountClosureWording: (d['accountClosureWording'] ??
+    oneToOneGuidePrice: (d['oneToOneGuidePrice'] as num?)?.toDouble() ?? 30.0,
+    oneToOneGuideMinutes: (d['oneToOneGuideMinutes'] as num?)?.toInt() ?? 60,
+    paymentReferenceSuffix: (d['paymentReferenceSuffix'] ?? '007').toString(),
+    accountClosureWording:
+        (d['accountClosureWording'] ??
                 'If you only need a break, pause your dog’s adventure instead. If you leave the Academy, your personal Academy profile and training data will be removed after Admin approves the request.')
             .toString(),
-      );
+  );
 
   String priceLabel() => '£${dogPeriodCost.toStringAsFixed(2)}';
   String accessLabel() => '$dogPeriodDays days';
