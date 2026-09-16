@@ -676,54 +676,108 @@ class FirestoreService {
   Future<void> setSubmissionVideoArchiveRequested(
     String submissionId,
     bool value,
-  ) => db.collection('submissions').doc(submissionId).update({
-    'videoArchiveRequested': value,
-    'videoArchiveRequestedAt': value ? FieldValue.serverTimestamp() : null,
-  });
+  ) async {
+    final ref = db.collection('submissions').doc(submissionId);
+    final snap = await ref.get();
+    final data = snap.data() ?? {};
+
+    Timestamp? deleteAfter;
+
+    if (!value) {
+      final reviewedAt = data['reviewedAt'] as Timestamp?;
+
+      if (reviewedAt != null) {
+        deleteAfter = Timestamp.fromDate(
+          reviewedAt.toDate().add(const Duration(days: 30)),
+        );
+      }
+    }
+
+    await ref.update({
+      'videoArchiveRequested': value,
+      'videoArchiveRequestedAt': value ? FieldValue.serverTimestamp() : null,
+      'videoDeleteAfter': value ? null : deleteAfter,
+    });
+  }
 
   Future<void> setHelpVideoArchiveRequested({
     required String threadId,
     required String messageId,
     required bool value,
-  }) => db
-      .collection('lessonHelp')
-      .doc(threadId)
-      .collection('messages')
-      .doc(messageId)
-      .update({
-        'videoArchiveRequested': value,
-        'videoArchiveRequestedAt': value ? FieldValue.serverTimestamp() : null,
-      });
+  }) async {
+    final threadRef = db.collection('lessonHelp').doc(threadId);
+    final messageRef = threadRef.collection('messages').doc(messageId);
+
+    final threadSnap = await threadRef.get();
+    final thread = threadSnap.data() ?? {};
+
+    Timestamp? deleteAfter;
+
+    if (!value) {
+      final resolvedAt = thread['resolvedAt'] as Timestamp?;
+
+      if (resolvedAt != null) {
+        deleteAfter = Timestamp.fromDate(
+          resolvedAt.toDate().add(const Duration(days: 30)),
+        );
+      }
+    }
+
+    await messageRef.update({
+      'videoArchiveRequested': value,
+      'videoArchiveRequestedAt': value ? FieldValue.serverTimestamp() : null,
+      'videoDeleteAfter': value ? null : deleteAfter,
+    });
+  }
 
   Future<void> markSubmissionVideoArchived(
     String submissionId, {
     String archiveUrl = '',
-  }) => db.collection('submissions').doc(submissionId).update({
-    'videoArchived': true,
-    'videoArchivedAt': FieldValue.serverTimestamp(),
-    'videoArchiveRequested': false,
-    'videoArchiveRequestedAt': null,
-    'videoArchiveUrl': archiveUrl.trim(),
-    'videoDeleteAfter': null,
-  });
+  }) async {
+    final ref = db.collection('submissions').doc(submissionId);
+    final snap = await ref.get();
+    final data = snap.data() ?? {};
+
+    final reviewed = data['reviewedAt'] != null;
+
+    await ref.update({
+      'videoArchived': true,
+      'videoArchivedAt': FieldValue.serverTimestamp(),
+      'videoArchiveRequested': false,
+      'videoArchiveRequestedAt': null,
+      'videoArchiveUrl': archiveUrl.trim(),
+      'videoDeleteAfter': reviewed
+          ? Timestamp.fromDate(DateTime.now().add(const Duration(days: 7)))
+          : null,
+    });
+  }
 
   Future<void> markHelpVideoArchived({
     required String threadId,
     required String messageId,
     String archiveUrl = '',
-  }) => db
-      .collection('lessonHelp')
-      .doc(threadId)
-      .collection('messages')
-      .doc(messageId)
-      .update({
-        'videoArchived': true,
-        'videoArchivedAt': FieldValue.serverTimestamp(),
-        'videoArchiveRequested': false,
-        'videoArchiveRequestedAt': null,
-        'videoArchiveUrl': archiveUrl.trim(),
-        'videoDeleteAfter': null,
-      });
+  }) async {
+    final threadRef = db.collection('lessonHelp').doc(threadId);
+    final messageRef = threadRef.collection('messages').doc(messageId);
+
+    final threadSnap = await threadRef.get();
+    final thread = threadSnap.data() ?? {};
+
+    final resolved =
+        thread['resolvedAt'] != null ||
+        (thread['status'] ?? '').toString() == 'resolved';
+
+    await messageRef.update({
+      'videoArchived': true,
+      'videoArchivedAt': FieldValue.serverTimestamp(),
+      'videoArchiveRequested': false,
+      'videoArchiveRequestedAt': null,
+      'videoArchiveUrl': archiveUrl.trim(),
+      'videoDeleteAfter': resolved
+          ? Timestamp.fromDate(DateTime.now().add(const Duration(days: 7)))
+          : null,
+    });
+  }
 
   Future<void> reviewSubmission({
     required String submissionId,
