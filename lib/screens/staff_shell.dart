@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../i18n.dart';
 
@@ -861,10 +862,14 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
   final service = FirestoreService();
   final reply = TextEditingController();
   final videoLink = TextEditingController();
+  final stt.SpeechToText speech = stt.SpeechToText();
 
   late String assignedTo;
   bool showVideoLink = false;
   bool sending = false;
+  bool listening = false;
+  bool speechReady = false;
+  String speechSeed = '';
 
   @override
   void initState() {
@@ -874,6 +879,9 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
 
   @override
   void dispose() {
+    if (speech.isListening) {
+      unawaited(speech.cancel());
+    }
     reply.dispose();
     videoLink.dispose();
     super.dispose();
@@ -903,6 +911,88 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
 
     return (uri.scheme == 'http' || uri.scheme == 'https') &&
         uri.host.isNotEmpty;
+  }
+
+  Future<void> _toggleSpeech() async {
+    if (speech.isListening || listening) {
+      await speech.stop();
+
+      if (mounted) {
+        setState(() => listening = false);
+      }
+      return;
+    }
+
+    if (!speechReady) {
+      final available = await speech.initialize(
+        onStatus: (status) {
+          if (!mounted) return;
+
+          setState(() {
+            listening = status == 'listening';
+          });
+        },
+        onError: (error) {
+          debugPrint('Academy speech recognition error: ${error.errorMsg}');
+
+          if (!mounted) return;
+
+          setState(() => listening = false);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: I18nText(
+                'Speech recognition stopped. Please try again.',
+              ),
+            ),
+          );
+        },
+      );
+
+      if (!available) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: I18nText(
+              'Speech recognition is not available on this device.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      speechReady = true;
+    }
+
+    speechSeed = reply.text.trim();
+
+    await speech.listen(
+      onResult: (result) {
+        if (!mounted) return;
+
+        final spoken = result.recognizedWords.trim();
+
+        final combined = [
+          if (speechSeed.isNotEmpty) speechSeed,
+          if (spoken.isNotEmpty) spoken,
+        ].join(' ');
+
+        reply.value = TextEditingValue(
+          text: combined,
+          selection: TextSelection.collapsed(offset: combined.length),
+        );
+      },
+      listenOptions: stt.SpeechListenOptions(
+        partialResults: true,
+        listenMode: stt.ListenMode.dictation,
+        autoPunctuation: true,
+      ),
+    );
+
+    if (mounted) {
+      setState(() => listening = speech.isListening);
+    }
   }
 
   Future<void> _sendReply() async {
@@ -1013,11 +1103,13 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                   final builtIns = <Map<String, String>>[
                     {
                       'title': 'Shorter session',
-                      'text': 'Try making the next session much shorter and finish while your dog is still keen.',
+                      'text':
+                          'Try making the next session much shorter and finish while your dog is still keen.',
                     },
                     {
                       'title': 'Another angle',
-                      'text': 'Could you send us another short video from the side so we can see the movement more clearly?',
+                      'text':
+                          'Could you send us another short video from the side so we can see the movement more clearly?',
                     },
                   ];
                   final saved = (snap.data?.docs ?? [])
@@ -1133,8 +1225,20 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                   controller: reply,
                   minLines: 1,
                   maxLines: 4,
-                  decoration: const InputDecoration(
-                    label: I18nText('Reply to learner'),
+                  decoration: InputDecoration(
+                    label: const I18nText('Reply to learner'),
+                    helper: listening
+                        ? const I18nText('Listening… speak your reply.')
+                        : null,
+                    suffixIcon: IconButton(
+                      tooltip: tr(
+                        listening ? 'STOP LISTENING' : 'DICTATE REPLY',
+                      ),
+                      onPressed: sending ? null : _toggleSpeech,
+                      icon: Icon(
+                        listening ? Icons.stop_circle : Icons.mic_none,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1156,7 +1260,7 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                       ),
                     ),
                     FilledButton.icon(
-                      onPressed: sending ? null : _sendReply,
+                      onPressed: sending || listening ? null : _sendReply,
                       icon: sending
                           ? const SizedBox(
                               width: 18,

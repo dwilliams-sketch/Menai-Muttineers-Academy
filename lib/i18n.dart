@@ -304,7 +304,8 @@ const Map<String, String> _cy = {
       'Dylai hyn gymryd ychydig eiliadau yn unig.',
   'The Academy could not finish starting.':
       'Ni allai’r Academi orffen cychwyn.',
-  'Nothing has been deleted. Check your internet connection, then tap Retry.': 'Nid oes dim wedi’i ddileu. Gwiriwch eich cysylltiad rhyngrwyd, yna tapiwch Ailgeisio.',
+  'Nothing has been deleted. Check your internet connection, then tap Retry.':
+      'Nid oes dim wedi’i ddileu. Gwiriwch eich cysylltiad rhyngrwyd, yna tapiwch Ailgeisio.',
   'Startup details': 'Manylion cychwyn',
   'RETRY': 'AILGEISIO',
   'Unknown startup error.': 'Gwall cychwyn anhysbys.',
@@ -314,7 +315,8 @@ const Map<String, String> _cy = {
   'CREATE MY ACCOUNT': 'CREU FY NGHYFRIF',
   'Already aboard?': 'Eisoes ar fwrdd?',
   'EXISTING USER — SIGN IN': 'DEFNYDDIWR PRESENNOL — MEWNGOFNODI',
-  'Create an account once, then use the same login on the Android app or the web Academy.': 'Crëwch gyfrif unwaith, yna defnyddiwch yr un manylion mewngofnodi ar yr ap Android neu’r Academi ar y we.',
+  'Create an account once, then use the same login on the Android app or the web Academy.':
+      'Crëwch gyfrif unwaith, yna defnyddiwch yr un manylion mewngofnodi ar yr ap Android neu’r Academi ar y we.',
   'Welcome back aboard.': 'Croeso yn ôl ar fwrdd.',
   'Email': 'E-bost',
   'Email address': 'Cyfeiriad e-bost',
@@ -323,7 +325,8 @@ const Map<String, String> _cy = {
   'Signing in...': 'Yn mewngofnodi...',
   'Forgot password?': 'Wedi anghofio’r cyfrinair?',
   'Reset your password': 'Ailosod eich cyfrinair',
-  'Enter the email address you used for the Academy. We’ll send a secure reset link.': 'Rhowch y cyfeiriad e-bost a ddefnyddiwyd gennych ar gyfer yr Academi. Byddwn yn anfon dolen ailosod ddiogel.',
+  'Enter the email address you used for the Academy. We’ll send a secure reset link.':
+      'Rhowch y cyfeiriad e-bost a ddefnyddiwyd gennych ar gyfer yr Academi. Byddwn yn anfon dolen ailosod ddiogel.',
   'Send reset link': 'Anfon dolen ailosod',
   'Cancel': 'Canslo',
   'Back to account choices': 'Yn ôl i’r dewisiadau cyfrif',
@@ -345,14 +348,17 @@ const Map<String, String> _cy = {
   'NEXT': 'NESAF',
   'BACK': 'YN ÔL',
   'CREATE ACCOUNT': 'CREU CYFRIF',
-  'You will stay signed in after registration — there is no need to sign in again.': 'Byddwch yn aros wedi mewngofnodi ar ôl cofrestru — nid oes angen mewngofnodi eto.',
+  'You will stay signed in after registration — there is no need to sign in again.':
+      'Byddwch yn aros wedi mewngofnodi ar ôl cofrestru — nid oes angen mewngofnodi eto.',
   'Please enter your email and password.': 'Rhowch eich e-bost a’ch cyfrinair.',
   'Please enter a valid email address.': 'Rhowch gyfeiriad e-bost dilys.',
-  'Password reset email sent. Check your inbox and junk/spam folder.': 'Mae e-bost ailosod cyfrinair wedi’i anfon. Gwiriwch eich mewnflwch a’ch ffolder sbam.',
+  'Password reset email sent. Check your inbox and junk/spam folder.':
+      'Mae e-bost ailosod cyfrinair wedi’i anfon. Gwiriwch eich mewnflwch a’ch ffolder sbam.',
   'Account setup': 'Sefydlu cyfrif',
   'Sign out and register again': 'Allgofnodi a chofrestru eto',
   'Sign out': 'Allgofnodi',
-  'Your login exists, but the Academy profile was not found.': 'Mae eich manylion mewngofnodi yn bodoli, ond ni chanfuwyd proffil yr Academi.',
+  'Your login exists, but the Academy profile was not found.':
+      'Mae eich manylion mewngofnodi yn bodoli, ond ni chanfuwyd proffil yr Academi.',
 
   // Main learner navigation
   'Home': 'Hafan',
@@ -376,7 +382,8 @@ const Map<String, String> _cy = {
   'Access code': 'Cod mynediad',
   'ACTIVATE ACADEMY': 'GWEITHREDU’R ACADEMI',
   'Pay outside the app': 'Talu y tu allan i’r ap',
-  'The Academy never takes card or bank details inside the app. Use your normal banking app / standing order.': 'Nid yw’r Academi byth yn cymryd manylion cerdyn neu fanc yn yr ap. Defnyddiwch eich ap bancio arferol / archeb sefydlog.',
+  'The Academy never takes card or bank details inside the app. Use your normal banking app / standing order.':
+      'Nid yw’r Academi byth yn cymryd manylion cerdyn neu fanc yn yr ap. Defnyddiwch eich ap bancio arferol / archeb sefydlog.',
   'I’VE MADE A PAYMENT': 'Rwyf WEDI GWNEUD TALIAD',
   'Amount sent (£)': 'Swm a anfonwyd (£)',
   'Method': 'Dull',
@@ -396,9 +403,12 @@ const Map<String, String> _cy = {
   'RESTART ADVENTURE': 'AILDDECHRAU’R ANTUR',
   'REQUEST A 1-to-1': 'GOFYN AM 1-i-1',
   'REQUEST A 1-to-1 SESSION': 'GOFYN AM SESIWN 1-i-1',
-  '1-to-1 sessions are separate paid training sessions and remain available whether Academy access is active or paused.': 'Mae sesiynau 1-i-1 yn sesiynau hyfforddi â thâl ar wahân ac maent ar gael p’un a yw mynediad yr Academi yn weithredol neu wedi’i oedi.',
-  'All progress, trophies and training history are safely stored. Course lessons and official achievements stay locked while this dog is paused.': 'Mae’r holl gynnydd, tlysau a hanes hyfforddi wedi’u cadw’n ddiogel. Mae gwersi’r cwrs a chyflawniadau swyddogol wedi’u cloi tra bo’r ci hwn wedi’i oedi.',
-  'This dog needs Academy access before training progress, assessments, trophies and certificates unlock.': 'Mae angen mynediad i’r Academi ar y ci hwn cyn datgloi cynnydd hyfforddi, asesiadau, tlysau a thystysgrifau.',
+  '1-to-1 sessions are separate paid training sessions and remain available whether Academy access is active or paused.':
+      'Mae sesiynau 1-i-1 yn sesiynau hyfforddi â thâl ar wahân ac maent ar gael p’un a yw mynediad yr Academi yn weithredol neu wedi’i oedi.',
+  'All progress, trophies and training history are safely stored. Course lessons and official achievements stay locked while this dog is paused.':
+      'Mae’r holl gynnydd, tlysau a hanes hyfforddi wedi’u cadw’n ddiogel. Mae gwersi’r cwrs a chyflawniadau swyddogol wedi’u cloi tra bo’r ci hwn wedi’i oedi.',
+  'This dog needs Academy access before training progress, assessments, trophies and certificates unlock.':
+      'Mae angen mynediad i’r Academi ar y ci hwn cyn datgloi cynnydd hyfforddi, asesiadau, tlysau a thystysgrifau.',
   'Restart request sent to Admin.':
       'Cais ailgychwyn wedi’i anfon at y Gweinyddwr.',
   'Academy access': 'Mynediad yr Academi',
@@ -426,7 +436,8 @@ const Map<String, String> _cy = {
       'Dolen YouTube / Google Drive / rhannu arall',
   'Optional note': 'Nodyn dewisol',
   'SUBMIT ASSESSMENT': 'CYFLWYNO ASESIAD',
-  'Video coming soon — the Captain can add the link from Course Editor.': 'Fideo yn dod yn fuan — gall y Capten ychwanegu’r ddolen o Olygydd y Cwrs.',
+  'Video coming soon — the Captain can add the link from Course Editor.':
+      'Fideo yn dod yn fuan — gall y Capten ychwanegu’r ddolen o Olygydd y Cwrs.',
   'Trainer verified • Trophy earned':
       'Wedi’i wirio gan hyfforddwr • Tlws wedi’i ennill',
   'Keep practising': 'Parhewch i ymarfer',
@@ -511,6 +522,13 @@ const Map<String, String> _cy = {
   'What are you struggling with?': 'Gyda beth ydych chi’n cael trafferth?',
   'Reply to trainer': 'Ateb yr hyfforddwr',
   'SEND REPLY': 'ANFON ATEB',
+  'DICTATE REPLY': 'ADRODD ATEB',
+  'STOP LISTENING': 'RHOI\'R GORAU I WRANDO',
+  'Listening… speak your reply.': 'Yn gwrando… dywedwch eich ateb.',
+  'Speech recognition is not available on this device.':
+      'Nid yw adnabod lleferydd ar gael ar y ddyfais hon.',
+  'Speech recognition stopped. Please try again.':
+      'Daeth adnabod lleferydd i ben. Rhowch gynnig arall arni.',
   'ADD VIDEO LINK': 'YCHWANEGU DOLEN FIDEO',
   'HIDE VIDEO LINK': 'CUDDIO DOLEN FIDEO',
   'Please enter a valid http:// or https:// video link.':
@@ -574,7 +592,8 @@ const Map<String, String> _cy = {
   'Start Lights': 'Goleuadau Cychwyn',
   'Training Timer': 'Amserydd Hyfforddi',
   'Flyball Start Lights': 'Goleuadau Cychwyn Flyball',
-  'Press GO. React to the GREEN light — STOP too early gives a minus time; after green gives a plus time.': 'Pwyswch GO. Ymatebwch i’r golau GWYRDD — mae STOP yn rhy gynnar yn rhoi amser minws; ar ôl gwyrdd mae’n rhoi amser plws.',
+  'Press GO. React to the GREEN light — STOP too early gives a minus time; after green gives a plus time.':
+      'Pwyswch GO. Ymatebwch i’r golau GWYRDD — mae STOP yn rhy gynnar yn rhoi amser minws; ar ôl gwyrdd mae’n rhoi amser plws.',
   'GO': 'EWCH',
   'STOP': 'STOP',
   'Attempts': 'Ymdrechion',
@@ -593,11 +612,13 @@ const Map<String, String> _cy = {
   '🎯 Keep your eyes on the lights and have another go.':
       '🎯 Cadwch eich llygaid ar y goleuadau a rhowch gynnig arall.',
   'Short Training Timer': 'Amserydd Hyfforddi Byr',
-  'Short, happy sessions are often better than drilling the same exercise.': 'Mae sesiynau byr a hapus yn aml yn well nag ailadrodd yr un ymarfer yn ormodol.',
+  'Short, happy sessions are often better than drilling the same exercise.':
+      'Mae sesiynau byr a hapus yn aml yn well nag ailadrodd yr un ymarfer yn ormodol.',
   'START TIMER': 'DECHRAU’R AMSERYDD',
   'STOP TIMER': 'STOPIO’R AMSERYDD',
   'Time, matey! 🦜': 'Amser, gyfaill! 🦜',
-  'Finish on a good one and give your dog a break. Want to save the session to the diary?': 'Gorffennwch ar nodyn da a rhowch seibiant i’ch ci. Eisiau cadw’r sesiwn yn y dyddiadur?',
+  'Finish on a good one and give your dog a break. Want to save the session to the diary?':
+      'Gorffennwch ar nodyn da a rhowch seibiant i’ch ci. Eisiau cadw’r sesiwn yn y dyddiadur?',
   'Not this time': 'Nid y tro hwn',
   'Skill': 'Sgil',
   'General': 'Cyffredinol',
@@ -610,7 +631,8 @@ const Map<String, String> _cy = {
 
   // Crew & Kudos
   'The Crew': 'Y Criw',
-  'A positive little Academy community. Only names, dog names and shared achievements appear here.': 'Cymuned fach gadarnhaol yr Academi. Dim ond enwau, enwau cŵn a chyflawniadau a rennir sy’n ymddangos yma.',
+  'A positive little Academy community. Only names, dog names and shared achievements appear here.':
+      'Cymuned fach gadarnhaol yr Academi. Dim ond enwau, enwau cŵn a chyflawniadau a rennir sy’n ymddangos yma.',
   'Find Crew': 'Dod o Hyd i’r Criw',
   'Requests': 'Ceisiadau',
   'Crew Feed': 'Ffrwd y Criw',
@@ -665,7 +687,8 @@ const Map<String, String> _cy = {
       'Ydych chi’n siŵr eich bod am adael yr antur hon?',
   'PAUSE INSTEAD': 'OEDI YN LLE',
   'YES — REQUEST TO LEAVE': 'YDW — GOFYN I ADAEL',
-  'Your request has been sent to Captain/Admin. You can cancel it until it is processed.': 'Mae eich cais wedi’i anfon at y Capten/Gweinyddwr. Gallwch ei ganslo nes iddo gael ei brosesu.',
+  'Your request has been sent to Captain/Admin. You can cancel it until it is processed.':
+      'Mae eich cais wedi’i anfon at y Capten/Gweinyddwr. Gallwch ei ganslo nes iddo gael ei brosesu.',
   'Help us improve the ship': 'Helpwch ni i wella’r llong',
   'Suggestion': 'Awgrym',
   'Problem / bug': 'Problem / nam',
@@ -682,7 +705,8 @@ const Map<String, String> _cy = {
   'Control': 'Rheoli',
   'Captain’s Bridge': 'Pont y Capten',
   'Trainer Desk': 'Desg yr Hyfforddwr',
-  'What needs attention, who needs help, and what is happening aboard.': 'Beth sydd angen sylw, pwy sydd angen help, a beth sy’n digwydd ar fwrdd.',
+  'What needs attention, who needs help, and what is happening aboard.':
+      'Beth sydd angen sylw, pwy sydd angen help, a beth sy’n digwydd ar fwrdd.',
   'Learners': 'Dysgwyr',
   'Active dogs': 'Cŵn gweithredol',
   'Assessments': 'Asesiadau',
@@ -721,7 +745,8 @@ const Map<String, String> _cy = {
   'PAUSE ALL DOGS': 'OEDI POB CI',
   'CANCEL ALL PAUSES': 'CANSLO POB OEDI',
   'Pause all active dogs?': 'Oedi pob ci gweithredol?',
-  'Each active dog will keep its current paid access until the end date, then stop instead of renewing.': 'Bydd pob ci gweithredol yn cadw ei fynediad taledig presennol tan y dyddiad gorffen, yna’n stopio yn lle adnewyddu.',
+  'Each active dog will keep its current paid access until the end date, then stop instead of renewing.':
+      'Bydd pob ci gweithredol yn cadw ei fynediad taledig presennol tan y dyddiad gorffen, yna’n stopio yn lle adnewyddu.',
   '30 days of access authorised.': '30 diwrnod o fynediad wedi’i awdurdodi.',
   'Not enough Doubloons. Add at least 1 Doubloon first.':
       'Dim digon o Doubloons. Ychwanegwch o leiaf 1 Doubloon yn gyntaf.',
@@ -739,7 +764,8 @@ const Map<String, String> _cy = {
       'Oedi wedi’i drefnu ar ddiwedd y cyfnod taledig.',
   'Quarterly Academy Report': 'Adroddiad Chwarterol yr Academi',
   'Generate quarterly report': 'Cynhyrchu adroddiad chwarterol',
-  'Useful numbers for trainers, committee updates, grant evidence and privacy-safe social posts.': 'Ffigurau defnyddiol ar gyfer hyfforddwyr, diweddariadau pwyllgor, tystiolaeth grant a negeseuon cymdeithasol sy’n ddiogel o ran preifatrwydd.',
+  'Useful numbers for trainers, committee updates, grant evidence and privacy-safe social posts.':
+      'Ffigurau defnyddiol ar gyfer hyfforddwyr, diweddariadau pwyllgor, tystiolaeth grant a negeseuon cymdeithasol sy’n ddiogel o ran preifatrwydd.',
   'CREATE SOCIAL SUMMARY': 'CREU CRYNODEB CYMDEITHASOL',
   'Academy Settings': 'Gosodiadau’r Academi',
   'Academy price per dog (£)': 'Pris yr Academi fesul ci (£)',
@@ -800,9 +826,11 @@ const Map<String, String> _cy = {
   'A suitably pirate-themed day. The dogs are on water, mind!':
       'Diwrnod addas iawn i fôr-ladron. Dŵr i’r cŵn, cofiwch!',
   'National Dog Day': 'Diwrnod Cenedlaethol y Ci',
-  'Today is all about the dogs — as if every Academy day wasn’t already!': 'Heddiw mae’r cyfan am y cŵn — fel pe na bai pob diwrnod yn yr Academi eisoes!',
+  'Today is all about the dogs — as if every Academy day wasn’t already!':
+      'Heddiw mae’r cyfan am y cŵn — fel pe na bai pob diwrnod yn yr Academi eisoes!',
   'Talk Like a Pirate Day': 'Diwrnod Siarad fel Môr-leidr',
-  'Arrr! Today the Academy officially permits excessive pirate nonsense.': 'Arrr! Heddiw mae’r Academi yn caniatáu tipyn gormod o lol môr-leidr yn swyddogol.',
+  'Arrr! Today the Academy officially permits excessive pirate nonsense.':
+      'Arrr! Heddiw mae’r Academi yn caniatáu tipyn gormod o lol môr-leidr yn swyddogol.',
   'World Animal Day': 'Diwrnod Anifeiliaid y Byd',
   'A good day to celebrate every animal that makes life better.':
       'Diwrnod da i ddathlu pob anifail sy’n gwneud bywyd yn well.',
@@ -810,17 +838,20 @@ const Map<String, String> _cy = {
   'Merry Christmas from the whole Menai Muttineers crew.':
       'Nadolig Llawen gan holl griw Menai Muttineers.',
   'Boxing Day': 'Gŵyl San Steffan',
-  'A day for leftovers, muddy walks and perhaps a very short training game.': 'Diwrnod i fwyd dros ben, teithiau cerdded mwdlyd ac efallai gêm hyfforddi fer iawn.',
+  'A day for leftovers, muddy walks and perhaps a very short training game.':
+      'Diwrnod i fwyd dros ben, teithiau cerdded mwdlyd ac efallai gêm hyfforddi fer iawn.',
   'Good Friday': 'Dydd Gwener y Groglith',
   'Wishing the crew a peaceful bank holiday weekend.':
       'Gan ddymuno penwythnos gŵyl banc heddychlon i’r criw.',
   'Easter Monday': 'Dydd Llun y Pasg',
-  'A bank holiday Monday — a handy day for a little dog training adventure.': 'Dydd Llun gŵyl banc — diwrnod da ar gyfer antur hyfforddi fach gyda’r ci.',
+  'A bank holiday Monday — a handy day for a little dog training adventure.':
+      'Dydd Llun gŵyl banc — diwrnod da ar gyfer antur hyfforddi fach gyda’r ci.',
   'Early May Bank Holiday': 'Gŵyl Banc Dechrau Mai',
   'A bank holiday voyage — enjoy the extra day with your dog.':
       'Mordaith gŵyl banc — mwynhewch y diwrnod ychwanegol gyda’ch ci.',
   'Spring Bank Holiday': 'Gŵyl Banc y Gwanwyn',
-  'Enjoy the bank holiday, crew. Keep any training short and fun.': 'Mwynhewch y gŵyl banc, griw. Cadwch unrhyw hyfforddiant yn fyr ac yn hwyl.',
+  'Enjoy the bank holiday, crew. Keep any training short and fun.':
+      'Mwynhewch y gŵyl banc, griw. Cadwch unrhyw hyfforddiant yn fyr ac yn hwyl.',
   'Summer Bank Holiday': 'Gŵyl Banc yr Haf',
   'A summer bank holiday from the Academy crew.':
       'Cyfarchion gŵyl banc yr haf gan griw’r Academi.',
@@ -836,7 +867,8 @@ const Map<String, String> _cy = {
       'CANIATÁU I DDYSGWYR ERAILL DDOD O HYD I MI',
   'APPROVE': 'CYMERADWYO',
   'Academy Price, Access & Wording': 'Pris, Mynediad a Geiriad yr Academi',
-  'Academy settings saved. Everyone will see the new values.': 'Gosodiadau’r Academi wedi’u cadw. Bydd pawb yn gweld y gwerthoedd newydd.',
+  'Academy settings saved. Everyone will see the new values.':
+      'Gosodiadau’r Academi wedi’u cadw. Bydd pawb yn gweld y gwerthoedd newydd.',
   'Account removed from the Academy.': 'Cyfrif wedi’i dynnu o’r Academi.',
   'Account/payment controls are Admin/Captain only.':
       'Dim ond y Gweinyddwr/Capten all ddefnyddio rheolaethau cyfrif a thalu.',
@@ -846,20 +878,26 @@ const Map<String, String> _cy = {
   'Add dog': 'Ychwanegu ci',
   'Ahoy Test Learner & Test Dog!': 'Ahoy Ddysgwr Prawf a Chi Prawf!',
   'Amount £': 'Swm £',
-  'Android push works when the Firebase push service is enabled; the in-app bell always works.': 'Mae hysbysiadau gwthio Android yn gweithio pan fydd gwasanaeth gwthio Firebase wedi’i alluogi; mae’r gloch yn yr ap bob amser yn gweithio.',
+  'Android push works when the Firebase push service is enabled; the in-app bell always works.':
+      'Mae hysbysiadau gwthio Android yn gweithio pan fydd gwasanaeth gwthio Firebase wedi’i alluogi; mae’r gloch yn yr ap bob amser yn gweithio.',
   'App version': 'Fersiwn yr ap',
   'Appearance & Sound': 'Golwg a Sain',
   'Ask a General Question': 'Gofyn Cwestiwn Cyffredinol',
-  'Ask for help, request paid 1-to-1 training or keep a quick diary.': 'Gofynnwch am help, archebwch hyfforddiant 1-i-1 â thâl neu cadwch ddyddiadur cyflym.',
+  'Ask for help, request paid 1-to-1 training or keep a quick diary.':
+      'Gofynnwch am help, archebwch hyfforddiant 1-i-1 â thâl neu cadwch ddyddiadur cyflym.',
   'Assessment sent to the trainers.': 'Asesiad wedi’i anfon at yr hyfforddwyr.',
-  'Assessment volume and pass rate help us spot where the course or assessment may need improving.': 'Mae nifer yr asesiadau a’r gyfradd basio yn ein helpu i weld ble gallai’r cwrs neu’r asesiad fod angen gwella.',
-  'Automatic translation is not ready yet. Deploy the V1.4 Firebase Functions and enable Cloud Translation, or type the Welsh version manually.': 'Nid yw cyfieithu awtomatig yn barod eto. Defnyddiwch Firebase Functions V1.4 a galluogwch Cloud Translation, neu teipiwch y fersiwn Gymraeg â llaw.',
-  'Automatic translation is not ready yet. You can still type both versions manually.': 'Nid yw cyfieithu awtomatig yn barod eto. Gallwch deipio’r ddwy fersiwn â llaw.',
+  'Assessment volume and pass rate help us spot where the course or assessment may need improving.':
+      'Mae nifer yr asesiadau a’r gyfradd basio yn ein helpu i weld ble gallai’r cwrs neu’r asesiad fod angen gwella.',
+  'Automatic translation is not ready yet. Deploy the V1.4 Firebase Functions and enable Cloud Translation, or type the Welsh version manually.':
+      'Nid yw cyfieithu awtomatig yn barod eto. Defnyddiwch Firebase Functions V1.4 a galluogwch Cloud Translation, neu teipiwch y fersiwn Gymraeg â llaw.',
+  'Automatic translation is not ready yet. You can still type both versions manually.':
+      'Nid yw cyfieithu awtomatig yn barod eto. Gallwch deipio’r ddwy fersiwn â llaw.',
   'Back': 'Yn ôl',
   'Background style': 'Arddull y cefndir',
   'Bank Transfer / Standing Order': 'Trosglwyddiad Banc / Archeb Sefydlog',
   'Best guess is fine': 'Mae amcangyfrif gorau yn iawn',
-  'Built-in UK/Wales and fun dates are automatic. Add your own annual dates here.': 'Mae dyddiadau adeiledig y DU/Cymru a dyddiadau hwyliog yn awtomatig. Ychwanegwch eich dyddiadau blynyddol eich hun yma.',
+  'Built-in UK/Wales and fun dates are automatic. Add your own annual dates here.':
+      'Mae dyddiadau adeiledig y DU/Cymru a dyddiadau hwyliog yn awtomatig. Ychwanegwch eich dyddiadau blynyddol eich hun yma.',
   'CANCEL LEAVING REQUEST': 'CANSLO’R CAIS I ADAEL',
   'CHECK BACK IN 7 DAYS': 'GWIRIO ETO MEWN 7 DIWRNOD',
   'COMING SOON — tell us what treasure you’d actually like to buy.':
@@ -874,8 +912,10 @@ const Map<String, String> _cy = {
       'Newidiwch ddolenni fideo gwersi unigol heb ailadeiladu’r ap.',
   'Change prices, access length and learner wording without rebuilding the app.':
       'Newidiwch brisiau, hyd mynediad a geiriad dysgwyr heb ailadeiladu’r ap.',
-  'Change the timer sound in Settings: Parrot Squawk, Ship’s Bell, Tiny Cannon or None.': 'Newidiwch sain yr amserydd yn y Gosodiadau: Sgrech Parot, Cloch y Llong, Canon Bach neu Dim.',
-  'Choose a Key Skill. Work through the short lessons at your own pace, then request assessment when you are ready.': 'Dewiswch Sgil Allweddol. Gweithiwch drwy’r gwersi byr ar eich cyflymder eich hun, yna gofynnwch am asesiad pan fyddwch yn barod.',
+  'Change the timer sound in Settings: Parrot Squawk, Ship’s Bell, Tiny Cannon or None.':
+      'Newidiwch sain yr amserydd yn y Gosodiadau: Sgrech Parot, Cloch y Llong, Canon Bach neu Dim.',
+  'Choose a Key Skill. Work through the short lessons at your own pace, then request assessment when you are ready.':
+      'Dewiswch Sgil Allweddol. Gweithiwch drwy’r gwersi byr ar eich cyflymder eich hun, yna gofynnwch am asesiad pan fyddwch yn barod.',
   'Coming soon': 'Yn dod yn fuan',
   'Connected — this screen is reading live Firestore data.':
       'Wedi cysylltu — mae’r sgrin hon yn darllen data Firestore byw.',
@@ -886,7 +926,8 @@ const Map<String, String> _cy = {
   'Date is estimated': 'Amcangyfrif yw’r dyddiad',
   'Diary': 'Dyddiadur',
   'Due renewals / pauses': 'Adnewyddiadau / oedi sy’n ddyledus',
-  'Each dog has its own paid Academy adventure. The new dog will wait for Admin to activate it.': 'Mae gan bob ci ei antur Academi â thâl ei hun. Bydd y ci newydd yn aros i’r Gweinyddwr ei weithredu.',
+  'Each dog has its own paid Academy adventure. The new dog will wait for Admin to activate it.':
+      'Mae gan bob ci ei antur Academi â thâl ei hun. Bydd y ci newydd yn aros i’r Gweinyddwr ei weithredu.',
   'Enter the 6-character Academy code issued after your payment was confirmed.':
       'Rhowch y cod Academi 6 nod a roddwyd ar ôl cadarnhau eich taliad.',
   'Favourite scene': 'Hoff olygfa',
@@ -896,7 +937,8 @@ const Map<String, String> _cy = {
   'First payment confirmed': 'Taliad cyntaf wedi’i gadarnhau',
   'Follow the Crew': 'Dilyn y Criw',
   'Follow-up / homework': 'Dilyniant / gwaith cartref',
-  'For a question about a specific lesson, use Need Help directly under that video — it gives the trainer more context.': 'Ar gyfer cwestiwn am wers benodol, defnyddiwch Angen Cymorth o dan y fideo hwnnw — mae’n rhoi mwy o gyd-destun i’r hyfforddwr.',
+  'For a question about a specific lesson, use Need Help directly under that video — it gives the trainer more context.':
+      'Ar gyfer cwestiwn am wers benodol, defnyddiwch Angen Cymorth o dan y fideo hwnnw — mae’n rhoi mwy o gyd-destun i’r hyfforddwr.',
   'Help': 'Cymorth',
   'Help request sent to the trainers.':
       'Cais cymorth wedi’i anfon at yr hyfforddwyr.',
@@ -905,9 +947,12 @@ const Map<String, String> _cy = {
   'Idea / action / follow-up': 'Syniad / gweithred / dilyniant',
   'Ideas, jobs and next-quarter actions live in Control.':
       'Mae syniadau, tasgau a gweithredoedd y chwarter nesaf yn byw yn Rheoli.',
-  'If you need a break, pause a dog from Payments & Access. If you want to leave completely, you can ask us to close your Academy account.': 'Os oes angen seibiant arnoch, oediwch gi o Taliadau a Mynediad. Os hoffech adael yn llwyr, gallwch ofyn i ni gau eich cyfrif Academi.',
-  'If you only want a break from payments, cancel this and pause your dog instead.': 'Os mai seibiant o daliadau sydd ei angen arnoch, canslwch hwn ac oediwch eich ci yn lle hynny.',
-  'In-app notifications work on the normal setup. True background push and Firebase photo storage use optional Firebase services described in the V1.4 setup guide.': 'Mae hysbysiadau yn yr ap yn gweithio gyda’r gosodiad arferol. Mae gwthio cefndir a storio lluniau Firebase yn defnyddio gwasanaethau dewisol a ddisgrifir yng nghanllaw gosod V1.4.',
+  'If you need a break, pause a dog from Payments & Access. If you want to leave completely, you can ask us to close your Academy account.':
+      'Os oes angen seibiant arnoch, oediwch gi o Taliadau a Mynediad. Os hoffech adael yn llwyr, gallwch ofyn i ni gau eich cyfrif Academi.',
+  'If you only want a break from payments, cancel this and pause your dog instead.':
+      'Os mai seibiant o daliadau sydd ei angen arnoch, canslwch hwn ac oediwch eich ci yn lle hynny.',
+  'In-app notifications work on the normal setup. True background push and Firebase photo storage use optional Firebase services described in the V1.4 setup guide.':
+      'Mae hysbysiadau yn yr ap yn gweithio gyda’r gosodiad arferol. Mae gwthio cefndir a storio lluniau Firebase yn defnyddio gwasanaethau dewisol a ddisgrifir yng nghanllaw gosod V1.4.',
   'Issue the first activation code for brand-new learners.':
       'Rhowch y cod gweithredu cyntaf i ddysgwyr newydd sbon.',
   'I’ve made a payment': 'Rwyf wedi gwneud taliad',
@@ -972,21 +1017,28 @@ const Map<String, String> _cy = {
   'Note': 'Nodyn',
   'Notice published in English and Welsh.':
       'Hysbysiad wedi’i gyhoeddi yn Saesneg ac yn Gymraeg.',
-  'Official training tools stay locked while this dog is paused. Restart the adventure or use the 1-to-1 button on the anchored screen.': 'Mae offer hyfforddi swyddogol yn aros wedi’u cloi tra bo’r ci wedi’i oedi. Ailddechreuwch yr antur neu defnyddiwch y botwm 1-i-1 ar y sgrin angori.',
-  'Once Admin confirms payment, you’ll receive your 6-character activation code. You are already logged in — there is no need to use Forgot Password or sign in again.': 'Unwaith y bydd y Gweinyddwr yn cadarnhau’r taliad, byddwch yn derbyn eich cod gweithredu 6 nod. Rydych eisoes wedi mewngofnodi — nid oes angen defnyddio Ailosod Cyfrinair na mewngofnodi eto.',
+  'Official training tools stay locked while this dog is paused. Restart the adventure or use the 1-to-1 button on the anchored screen.':
+      'Mae offer hyfforddi swyddogol yn aros wedi’u cloi tra bo’r ci wedi’i oedi. Ailddechreuwch yr antur neu defnyddiwch y botwm 1-i-1 ar y sgrin angori.',
+  'Once Admin confirms payment, you’ll receive your 6-character activation code. You are already logged in — there is no need to use Forgot Password or sign in again.':
+      'Unwaith y bydd y Gweinyddwr yn cadarnhau’r taliad, byddwch yn derbyn eich cod gweithredu 6 nod. Rydych eisoes wedi mewngofnodi — nid oes angen defnyddio Ailosod Cyfrinair na mewngofnodi eto.',
   'Open training video': 'Agor fideo hyfforddi',
   'Open video': 'Agor fideo',
   'Optional reason / message to Admin':
       'Rheswm / neges ddewisol i’r Gweinyddwr',
-  'Pay outside the app using your normal bank. The app never handles your bank card or account login.': 'Talwch y tu allan i’r ap gan ddefnyddio eich banc arferol. Nid yw’r ap byth yn trin eich cerdyn banc na manylion mewngofnodi’r cyfrif.',
+  'Pay outside the app using your normal bank. The app never handles your bank card or account login.':
+      'Talwch y tu allan i’r ap gan ddefnyddio eich banc arferol. Nid yw’r ap byth yn trin eich cerdyn banc na manylion mewngofnodi’r cyfrif.',
   'Payment confirmations': 'Cadarnhadau talu',
   'Payment notice sent to Admin.':
       'Hysbysiad talu wedi’i anfon at y Gweinyddwr.',
-  'Payment notice sent. Admin will confirm it after checking the bank.': 'Hysbysiad talu wedi’i anfon. Bydd y Gweinyddwr yn ei gadarnhau ar ôl gwirio’r banc.',
-  'Payments happen outside the app. The Academy does not collect your bank or card details.': 'Mae taliadau’n digwydd y tu allan i’r ap. Nid yw’r Academi yn casglu manylion eich banc na’ch cerdyn.',
+  'Payment notice sent. Admin will confirm it after checking the bank.':
+      'Hysbysiad talu wedi’i anfon. Bydd y Gweinyddwr yn ei gadarnhau ar ôl gwirio’r banc.',
+  'Payments happen outside the app. The Academy does not collect your bank or card details.':
+      'Mae taliadau’n digwydd y tu allan i’r ap. Nid yw’r Academi yn casglu manylion eich banc na’ch cerdyn.',
   'Permanent account removal': 'Tynnu cyfrif yn barhaol',
-  'Photo upload is currently disabled by Admin. This keeps the Academy on the low-cost setup until cloud photo storage is enabled.': 'Mae uwchlwytho lluniau wedi’i analluogi gan y Gweinyddwr ar hyn o bryd. Mae hyn yn cadw’r Academi ar y gosodiad cost isel nes galluogi storio lluniau yn y cwmwl.',
-  'Photo upload is not available yet. Admin may need to enable Firebase Storage.': 'Nid yw uwchlwytho lluniau ar gael eto. Efallai y bydd angen i’r Gweinyddwr alluogi Firebase Storage.',
+  'Photo upload is currently disabled by Admin. This keeps the Academy on the low-cost setup until cloud photo storage is enabled.':
+      'Mae uwchlwytho lluniau wedi’i analluogi gan y Gweinyddwr ar hyn o bryd. Mae hyn yn cadw’r Academi ar y gosodiad cost isel nes galluogi storio lluniau yn y cwmwl.',
+  'Photo upload is not available yet. Admin may need to enable Firebase Storage.':
+      'Nid yw uwchlwytho lluniau ar gael eto. Efallai y bydd angen i’r Gweinyddwr alluogi Firebase Storage.',
   'Please add an English title and message before publishing.':
       'Ychwanegwch deitl a neges Saesneg cyn cyhoeddi.',
   'Please add your assessment video link.':
@@ -995,7 +1047,8 @@ const Map<String, String> _cy = {
       'Gwiriwch y pris a gwerthoedd y diwrnodau/munudau.',
   'Please complete the Ready for Assessment checks first.':
       'Cwblhewch y gwiriadau Barod am Asesiad yn gyntaf.',
-  'Practised or Confident counts as completed. Need Help sends a proper message to the trainers.': 'Mae Ymarferwyd neu Hyderus yn cyfrif fel wedi’i gwblhau. Mae Angen Cymorth yn anfon neges iawn at yr hyfforddwyr.',
+  'Practised or Confident counts as completed. Need Help sends a proper message to the trainers.':
+      'Mae Ymarferwyd neu Hyderus yn cyfrif fel wedi’i gwblhau. Mae Angen Cymorth yn anfon neges iawn at yr hyfforddwyr.',
   'Preview state': 'Statws rhagolwg',
   'Private staff notes': 'Nodiadau staff preifat',
   'Profile Photos': 'Lluniau Proffil',
@@ -1003,7 +1056,8 @@ const Map<String, String> _cy = {
   'Proposed/booked date & time': 'Dyddiad ac amser arfaethedig/archebedig',
   'Push & photo note': 'Nodyn gwthio a lluniau',
   'Quarter': 'Chwarter',
-  'Quarterly numbers are operational Academy records. They are useful for committee/impact reporting but are not a replacement for formal club accounts.': 'Mae ffigurau chwarterol yn gofnodion gweithredol yr Academi. Maent yn ddefnyddiol ar gyfer adrodd i’r pwyllgor ac am effaith, ond nid ydynt yn lle cyfrifon ffurfiol y clwb.',
+  'Quarterly numbers are operational Academy records. They are useful for committee/impact reporting but are not a replacement for formal club accounts.':
+      'Mae ffigurau chwarterol yn gofnodion gweithredol yr Academi. Maent yn ddefnyddiol ar gyfer adrodd i’r pwyllgor ac am effaith, ond nid ydynt yn lle cyfrifon ffurfiol y clwb.',
   'Quarterly social summary copied.':
       'Crynodeb cymdeithasol chwarterol wedi’i gopïo.',
   'Question sent to the trainers.': 'Cwestiwn wedi’i anfon at yr hyfforddwyr.',
@@ -1017,9 +1071,11 @@ const Map<String, String> _cy = {
       'Sgil a argymhellir wedi’i anfon at y dysgwr.',
   'Reply text': 'Testun yr ateb',
   'Reply to learner': 'Ateb y dysgwr',
-  'Requires Firebase Cloud Storage / Blaze plan. Leave OFF until storage is set up.': 'Mae angen Firebase Cloud Storage / cynllun Blaze. Gadewch hwn WEDI’I DDIFFODD nes bod y storfa wedi’i sefydlu.',
+  'Requires Firebase Cloud Storage / Blaze plan. Leave OFF until storage is set up.':
+      'Mae angen Firebase Cloud Storage / cynllun Blaze. Gadewch hwn WEDI’I DDIFFODD nes bod y storfa wedi’i sefydlu.',
   'Resolve': 'Datrys',
-  'Reusable starting points that trainers can edit before sending.': 'Mannau cychwyn y gellir eu hailddefnyddio ac y gall hyfforddwyr eu golygu cyn anfon.',
+  'Reusable starting points that trainers can edit before sending.':
+      'Mannau cychwyn y gellir eu hailddefnyddio ac y gall hyfforddwyr eu golygu cyn anfon.',
   'SAVE LINKS & PAYMENT DETAILS': 'CADW DOLENNI A MANYLION TALU',
   'SEND KUDOS': 'ANFON KUDOS',
   'SEND MISSION': 'ANFON CENHADAETH',
@@ -1039,19 +1095,26 @@ const Map<String, String> _cy = {
   'Staff Audit Trail': 'Trywydd Archwilio Staff',
   'Standing order / Direct Debit information':
       'Gwybodaeth Archeb Sefydlog / Debyd Uniongyrchol',
-  'TEST DECK — this is a safe preview. It does not change your staff permissions or real learner data.': 'DEC PRAWF — rhagolwg diogel yw hwn. Nid yw’n newid eich caniatâd staff na data dysgwyr go iawn.',
+  'TEST DECK — this is a safe preview. It does not change your staff permissions or real learner data.':
+      'DEC PRAWF — rhagolwg diogel yw hwn. Nid yw’n newid eich caniatâd staff na data dysgwyr go iawn.',
   'Tap the bell at the top to open your postbox.':
       'Tapiwch y gloch ar y brig i agor eich blwch post.',
-  'Tell the trainers what is happening. This creates a conversation linked to this exact lesson.': 'Dywedwch wrth yr hyfforddwyr beth sy’n digwydd. Mae hyn yn creu sgwrs sy’n gysylltiedig â’r wers benodol hon.',
+  'Tell the trainers what is happening. This creates a conversation linked to this exact lesson.':
+      'Dywedwch wrth yr hyfforddwyr beth sy’n digwydd. Mae hyn yn creu sgwrs sy’n gysylltiedig â’r wers benodol hon.',
   'Tell us about you': 'Dywedwch wrthym amdanoch chi',
   'Tell us about your dog': 'Dywedwch wrthym am eich ci',
-  'Test active, paused, awaiting and graduated views without changing your staff role.': 'Profwch olygfeydd gweithredol, wedi’u hoedi, yn aros ac wedi graddio heb newid eich rôl staff.',
-  'Test the learner experience, edit the course and keep the Academy running without rebuilding the APK.': 'Profwch brofiad y dysgwr, golygwch y cwrs a chadwch yr Academi i redeg heb ailadeiladu’r APK.',
+  'Test active, paused, awaiting and graduated views without changing your staff role.':
+      'Profwch olygfeydd gweithredol, wedi’u hoedi, yn aros ac wedi graddio heb newid eich rôl staff.',
+  'Test the learner experience, edit the course and keep the Academy running without rebuilding the APK.':
+      'Profwch brofiad y dysgwr, golygwch y cwrs a chadwch yr Academi i redeg heb ailadeiladu’r APK.',
   'Thank you — feedback sent to the Captain.':
       'Diolch — adborth wedi’i anfon at y Capten.',
-  'The deletion service is not ready yet. Set up V1.4 Firebase Functions using the included guide, then try again.': 'Nid yw’r gwasanaeth dileu yn barod eto. Sefydlwch Firebase Functions V1.4 gan ddefnyddio’r canllaw, yna rhowch gynnig arall.',
-  'The first Academy access charge has been applied at the current Admin-set price. Any extra amount has been added as Academy credit.': 'Mae’r tâl mynediad Academi cyntaf wedi’i gymhwyso ar y pris presennol a osodwyd gan y Gweinyddwr. Mae unrhyw swm ychwanegol wedi’i ychwanegu fel credyd Academi.',
-  'The two Gentle Tide tracks are built in. Add more by public MP3 URL without rebuilding.': 'Mae’r ddau drac Gentle Tide wedi’u cynnwys. Ychwanegwch fwy drwy URL MP3 cyhoeddus heb ailadeiladu.',
+  'The deletion service is not ready yet. Set up V1.4 Firebase Functions using the included guide, then try again.':
+      'Nid yw’r gwasanaeth dileu yn barod eto. Sefydlwch Firebase Functions V1.4 gan ddefnyddio’r canllaw, yna rhowch gynnig arall.',
+  'The first Academy access charge has been applied at the current Admin-set price. Any extra amount has been added as Academy credit.':
+      'Mae’r tâl mynediad Academi cyntaf wedi’i gymhwyso ar y pris presennol a osodwyd gan y Gweinyddwr. Mae unrhyw swm ychwanegol wedi’i ychwanegu fel credyd Academi.',
+  'The two Gentle Tide tracks are built in. Add more by public MP3 URL without rebuilding.':
+      'Mae’r ddau drac Gentle Tide wedi’u cynnwys. Ychwanegwch fwy drwy URL MP3 cyhoeddus heb ailadeiladu.',
   'They only see your display name and dog name.':
       'Dim ond eich enw arddangos ac enw’r ci maent yn eu gweld.',
   'Trainer notes': 'Nodiadau’r hyfforddwr',
@@ -1061,16 +1124,20 @@ const Map<String, String> _cy = {
       'Defnyddiwch symudiadau a thrawsnewidiadau mwy ysgafn.',
   'Use this as a gentle check-in list, not a performance score.':
       'Defnyddiwch hwn fel rhestr wirio garedig, nid fel sgôr perfformiad.',
-  'Uses Academy credit for a fresh voyage at the current Admin-set price and access period.': 'Yn defnyddio credyd Academi ar gyfer mordaith newydd ar y pris a’r cyfnod mynediad presennol a osodwyd gan y Gweinyddwr.',
+  'Uses Academy credit for a fresh voyage at the current Admin-set price and access period.':
+      'Yn defnyddio credyd Academi ar gyfer mordaith newydd ar y pris a’r cyfnod mynediad presennol a osodwyd gan y Gweinyddwr.',
   'Video': 'Fideo',
   'We have practised it on several occasions.':
       'Rydym wedi’i ymarfer ar sawl achlysur.',
-  'When you and your Crew earn shared achievements, they’ll appear here.': 'Pan fyddwch chi a’ch Criw yn ennill cyflawniadau a rennir, byddant yn ymddangos yma.',
-  'Write in English, auto-translate to Welsh, tweak it, preview both, then publish.': 'Ysgrifennwch yn Saesneg, cyfieithwch yn awtomatig i’r Gymraeg, addaswch, rhagolygwch y ddwy fersiwn, yna cyhoeddwch.',
+  'When you and your Crew earn shared achievements, they’ll appear here.':
+      'Pan fyddwch chi a’ch Criw yn ennill cyflawniadau a rennir, byddant yn ymddangos yma.',
+  'Write in English, auto-translate to Welsh, tweak it, preview both, then publish.':
+      'Ysgrifennwch yn Saesneg, cyfieithwch yn awtomatig i’r Gymraeg, addaswch, rhagolygwch y ddwy fersiwn, yna cyhoeddwch.',
   'YES — REMOVE ACCOUNT': 'YDW — TYNU’R CYFRIF',
   'You are currently hidden from Crew search.':
       'Rydych wedi’ch cuddio o chwiliad y Criw ar hyn o bryd.',
-  'You can add more dogs later. Each registered dog has its own Academy adventure.': 'Gallwch ychwanegu mwy o gŵn yn ddiweddarach. Mae gan bob ci cofrestredig ei antur Academi ei hun.',
+  'You can add more dogs later. Each registered dog has its own Academy adventure.':
+      'Gallwch ychwanegu mwy o gŵn yn ddiweddarach. Mae gan bob ci cofrestredig ei antur Academi ei hun.',
   'YouTube / video URL': 'URL YouTube / fideo',
   'Your payment reference:': 'Eich cyfeirnod talu:',
   'Your reference:': 'Eich cyfeirnod:',
@@ -1097,7 +1164,8 @@ const Map<String, String> _cy = {
       '1 Doubloon = £5 = 30 diwrnod o fynediad i un ci.',
   '1 Doubloon = £5 = 30 days of Academy access for one dog.':
       '1 Doubloon = £5 = 30 diwrnod o fynediad Academi i un ci.',
-  'A rolling start in this practice game means your reaction is from +0.000 to +0.004 seconds. The display shows two decimals, while the app keeps thousandths internally. A tiny early start can therefore show -0.00 — painfully close!': 'Yn y gêm ymarfer hon, mae cychwyn rholio yn golygu ymateb rhwng +0.000 a +0.004 eiliad. Mae’r sgrin yn dangos dau le degol, ond mae’r ap yn cadw milfedau yn fewnol. Felly gall cychwyn ychydig yn gynnar iawn ddangos -0.00 — mor agos!',
+  'A rolling start in this practice game means your reaction is from +0.000 to +0.004 seconds. The display shows two decimals, while the app keeps thousandths internally. A tiny early start can therefore show -0.00 — painfully close!':
+      'Yn y gêm ymarfer hon, mae cychwyn rholio yn golygu ymateb rhwng +0.000 a +0.004 eiliad. Mae’r sgrin yn dangos dau le degol, ond mae’r ap yn cadw milfedau yn fewnol. Felly gall cychwyn ychydig yn gynnar iawn ddangos -0.00 — mor agos!',
   'ACCEPT': 'DERBYN',
   'ADJUST DOUBLOONS': 'ADDASU DOUBLOONS',
   'Academy Access & Wording': 'Mynediad a Geiriad yr Academi',
@@ -1105,20 +1173,27 @@ const Map<String, String> _cy = {
   'Academy role': 'Rôl yr Academi',
   'Add Doubloons': 'Ychwanegu Doubloons',
   'Adjust Doubloons': 'Addasu Doubloons',
-  'Admin will use 1 available Doubloon to start another 30 days of access.': 'Bydd y Gweinyddwr yn defnyddio 1 Doubloon sydd ar gael i ddechrau 30 diwrnod arall o fynediad.',
+  'Admin will use 1 available Doubloon to start another 30 days of access.':
+      'Bydd y Gweinyddwr yn defnyddio 1 Doubloon sydd ar gael i ddechrau 30 diwrnod arall o fynediad.',
   'COPY': 'COPÏO',
   'COPY NAME': 'COPÏO’R ENW',
   'Doubloon History': 'Hanes Doubloons',
-  'Doubloon access is fixed at £5 / 30 days. Edit the other learner wording and 1-to-1 guide here.': 'Mae mynediad Doubloon wedi’i osod ar £5 / 30 diwrnod. Golygwch y geiriad arall i ddysgwyr a’r canllaw 1-i-1 yma.',
+  'Doubloon access is fixed at £5 / 30 days. Edit the other learner wording and 1-to-1 guide here.':
+      'Mae mynediad Doubloon wedi’i osod ar £5 / 30 diwrnod. Golygwch y geiriad arall i ddysgwyr a’r canllaw 1-i-1 yma.',
   'Doubloon and payment controls are Admin/Captain only.':
       'Dim ond y Gweinyddwr neu’r Capten all reoli Doubloons a thaliadau.',
-  'Doubloons appear here as soon as Admin confirms or adjusts your balance.': 'Bydd Doubloons yn ymddangos yma cyn gynted ag y bydd y Gweinyddwr yn cadarnhau neu’n addasu eich balans.',
-  'English and Welsh use the Academy translation service. Pirate Talk is deliberately silly and is only for fun.': 'Mae Saesneg a Chymraeg yn defnyddio gwasanaeth cyfieithu’r Academi. Mae Iaith Môr-ladron yn fwriadol wirion ac ar gyfer hwyl yn unig.',
-  'English/Welsh translation is not ready yet. The Captain may need to deploy the V1.4 Firebase Functions.': 'Nid yw’r cyfieithu Saesneg/Cymraeg yn barod eto. Efallai y bydd angen i’r Capten ddefnyddio Firebase Functions V1.4.',
-  'Enter only the three letters below. You do not need to type your full name.': 'Rhowch y tri llythyren isod yn unig. Nid oes angen teipio eich enw llawn.',
+  'Doubloons appear here as soon as Admin confirms or adjusts your balance.':
+      'Bydd Doubloons yn ymddangos yma cyn gynted ag y bydd y Gweinyddwr yn cadarnhau neu’n addasu eich balans.',
+  'English and Welsh use the Academy translation service. Pirate Talk is deliberately silly and is only for fun.':
+      'Mae Saesneg a Chymraeg yn defnyddio gwasanaeth cyfieithu’r Academi. Mae Iaith Môr-ladron yn fwriadol wirion ac ar gyfer hwyl yn unig.',
+  'English/Welsh translation is not ready yet. The Captain may need to deploy the V1.4 Firebase Functions.':
+      'Nid yw’r cyfieithu Saesneg/Cymraeg yn barod eto. Efallai y bydd angen i’r Capten ddefnyddio Firebase Functions V1.4.',
+  'Enter only the three letters below. You do not need to type your full name.':
+      'Rhowch y tri llythyren isod yn unig. Nid oes angen teipio eich enw llawn.',
   'First letter of first name': 'Llythyren gyntaf yr enw cyntaf',
   'From': 'O',
-  'Just for laughs — this never changes your real Academy name or profile.': 'Dim ond am hwyl — nid yw hyn byth yn newid eich enw na’ch proffil go iawn yn yr Academi.',
+  'Just for laughs — this never changes your real Academy name or profile.':
+      'Dim ond am hwyl — nid yw hyn byth yn newid eich enw na’ch proffil go iawn yn yr Academi.',
   'Last letter of last name': 'Llythyren olaf y cyfenw',
   'Number of Doubloons': 'Nifer y Doubloons',
   'One Doubloon is £5 and gives one dog 30 days of Academy access.':
@@ -1131,38 +1206,47 @@ const Map<String, String> _cy = {
   'REVEAL MY PIRATE NAME': 'DANGOS FY ENW MÔR-LEIDR',
   'That would take the Doubloon balance below zero.':
       'Byddai hynny’n mynd â balans y Doubloons o dan sero.',
-  'The first £5 payment has opened the first 30-day voyage. Any extra full or part balance has been added as Doubloons.': 'Mae’r taliad cyntaf o £5 wedi agor y fordaith gyntaf o 30 diwrnod. Mae unrhyw falans ychwanegol, llawn neu rannol, wedi’i ychwanegu fel Doubloons.',
+  'The first £5 payment has opened the first 30-day voyage. Any extra full or part balance has been added as Doubloons.':
+      'Mae’r taliad cyntaf o £5 wedi agor y fordaith gyntaf o 30 diwrnod. Mae unrhyw falans ychwanegol, llawn neu rannol, wedi’i ychwanegu fel Doubloons.',
   'Third letter of first name': 'Trydedd lythyren yr enw cyntaf',
   'To': 'I',
   'Type something to translate': 'Teipiwch rywbeth i’w gyfieithu',
   'Uses 1 Doubloon for a fresh 30-day voyage.':
       'Yn defnyddio 1 Doubloon ar gyfer mordaith newydd o 30 diwrnod.',
   'V1.4.0+10 • Android + Web': 'V1.4.0+10 • Android + Gwe',
-  'Welcome aboard, matey! For absolutely no official reason, ye shall be known as:': 'Croeso ar fwrdd, gyfaill! Am ddim rheswm swyddogol o gwbl, dyma dy enw môr-leidr:',
+  'Welcome aboard, matey! For absolutely no official reason, ye shall be known as:':
+      'Croeso ar fwrdd, gyfaill! Am ddim rheswm swyddogol o gwbl, dyma dy enw môr-leidr:',
   '⚓  CAPTAIN’S TROPHY CABIN  ⚓': '⚓  CABAN TLYSAU’R CAPTEN  ⚓',
-  '⚓ Pause scheduled. No new Doubloon will be used when this paid voyage ends.': '⚓ Mae’r saib wedi’i drefnu. Ni fydd Doubloon newydd yn cael ei ddefnyddio pan ddaw’r fordaith daledig hon i ben.',
+  '⚓ Pause scheduled. No new Doubloon will be used when this paid voyage ends.':
+      '⚓ Mae’r saib wedi’i drefnu. Ni fydd Doubloon newydd yn cael ei ddefnyddio pan ddaw’r fordaith daledig hon i ben.',
   '🏴‍☠️ Pirate Name Generator': '🏴‍☠️ Cynhyrchydd Enwau Môr-ladron',
   '🦜 English / Welsh / Pirate Translator':
       '🦜 Cyfieithydd Saesneg / Cymraeg / Môr-ladron',
-  '🪙 Academy access: 1 Doubloon = £5 = 30 days for one dog. This is fixed in V1.4.': '🪙 Mynediad yr Academi: 1 Doubloon = £5 = 30 diwrnod i un ci. Mae hyn wedi’i osod yn V1.4.',
+  '🪙 Academy access: 1 Doubloon = £5 = 30 days for one dog. This is fixed in V1.4.':
+      '🪙 Mynediad yr Academi: 1 Doubloon = £5 = 30 diwrnod i un ci. Mae hyn wedi’i osod yn V1.4.',
   'Pirate Talk': 'Iaith Môr-ladron',
   'Swap languages': 'Cyfnewid ieithoedd',
   'Translating...': 'Yn cyfieithu...',
   'TRANSLATE': 'CYFIEITHU',
   'A special Academy trophy for the dog’s birthday.':
       'Tlws Academi arbennig ar gyfer pen-blwydd y ci.',
-  'Add a little more pace while keeping the dog balanced and confident.': 'Ychwanegwch ychydig mwy o gyflymder gan gadw’r ci yn gytbwys ac yn hyderus.',
+  'Add a little more pace while keeping the dog balanced and confident.':
+      'Ychwanegwch ychydig mwy o gyflymder gan gadw’r ci yn gytbwys ac yn hyderus.',
   'Add controlled forward movement towards the target.':
       'Ychwanegwch symudiad rheoledig ymlaen tuag at y targed.',
   'Add excitement and speed with a safe restrained release.':
       'Ychwanegwch gyffro a chyflymder gyda rhyddhad diogel o afael.',
   'Brave Enough to Be Judged': 'Digon Dewr i Gael ei Asesu',
-  'Bring the foundation skills together before applying for an in-person beginners course.': 'Dewch â’r sgiliau sylfaen at ei gilydd cyn gwneud cais am gwrs dechreuwyr wyneb yn wyneb.',
-  'Bring the whole recall together with speed and a useful finish.': 'Dewch â’r adalw cyfan at ei gilydd gyda chyflymder a gorffeniad defnyddiol.',
-  'Build a dog that chooses you, enjoys working with you and can switch into training mode happily.': 'Adeiladwch gi sy’n eich dewis chi, yn mwynhau gweithio gyda chi ac yn gallu troi i fodd hyfforddi yn hapus.',
+  'Bring the foundation skills together before applying for an in-person beginners course.':
+      'Dewch â’r sgiliau sylfaen at ei gilydd cyn gwneud cais am gwrs dechreuwyr wyneb yn wyneb.',
+  'Bring the whole recall together with speed and a useful finish.':
+      'Dewch â’r adalw cyfan at ei gilydd gyda chyflymder a gorffeniad defnyddiol.',
+  'Build a dog that chooses you, enjoys working with you and can switch into training mode happily.':
+      'Adeiladwch gi sy’n eich dewis chi, yn mwynhau gweithio gyda chi ac yn gallu troi i fodd hyfforddi yn hapus.',
   'Build a sharp response to the dog’s name before adding distance.':
       'Adeiladwch ymateb sydyn i enw’r ci cyn ychwanegu pellter.',
-  'Build a useful return that finishes close enough to reward well.': 'Adeiladwch ddychweliad defnyddiol sy’n gorffen yn ddigon agos i wobrwyo’n dda.',
+  'Build a useful return that finishes close enough to reward well.':
+      'Adeiladwch ddychweliad defnyddiol sy’n gorffen yn ddigon agos i wobrwyo’n dda.',
   'Build awareness of where the dog is placing their feet.':
       'Adeiladwch ymwybyddiaeth o ble mae’r ci yn gosod ei draed.',
   'Build confidence while people or dogs move at a sensible distance.':
@@ -1171,11 +1255,14 @@ const Map<String, String> _cy = {
       'Adeiladwch symudiad rheoledig heb ddefnyddio ymarferion effaith uchel.',
   'Build value in moving with the handler using short, lively games.':
       'Adeiladwch werth mewn symud gyda’r triniwr drwy gemau byr a bywiog.',
-  'Build value in playing with the handler so rewards remain exciting around flyball.': 'Adeiladwch werth mewn chwarae gyda’r triniwr fel bod gwobrau’n parhau’n gyffrous o amgylch flyball.',
+  'Build value in playing with the handler so rewards remain exciting around flyball.':
+      'Adeiladwch werth mewn chwarae gyda’r triniwr fel bod gwobrau’n parhau’n gyffrous o amgylch flyball.',
   'Check reward timing, clear cues and short positive sessions.':
       'Gwiriwch amseru gwobrau, ciwiau clir a sesiynau byr cadarnhaol.',
-  'Choose sensible surfaces and prepare the dog before body-awareness work.': 'Dewiswch arwynebau synhwyrol a pharatowch y ci cyn gwaith ymwybyddiaeth o’r corff.',
-  'Choose short clips that clearly show what you and your dog can do.': 'Dewiswch glipiau byr sy’n dangos yn glir beth allwch chi a’ch ci ei wneud.',
+  'Choose sensible surfaces and prepare the dog before body-awareness work.':
+      'Dewiswch arwynebau synhwyrol a pharatowch y ci cyn gwaith ymwybyddiaeth o’r corff.',
+  'Choose short clips that clearly show what you and your dog can do.':
+      'Dewiswch glipiau byr sy’n dangos yn glir beth allwch chi a’ch ci ei wneud.',
   'Combine a useful pickup with a direct return.':
       'Cyfunwch godi defnyddiol gyda dychweliad uniongyrchol.',
   'Completed the first Academy lesson.':
@@ -1184,7 +1271,8 @@ const Map<String, String> _cy = {
       'Crëwch ymateb cyflym a hapus yn ôl at y triniwr heb fawr o betruso.',
   'Create more urgency while keeping the retrieve tidy.':
       'Crëwch fwy o frys gan gadw’r adalw’n daclus.',
-  'Demonstrate that the dog can reconnect with you when something else is happening.': 'Dangoswch fod y ci yn gallu ailgysylltu â chi pan fydd rhywbeth arall yn digwydd.',
+  'Demonstrate that the dog can reconnect with you when something else is happening.':
+      'Dangoswch fod y ci yn gallu ailgysylltu â chi pan fydd rhywbeth arall yn digwydd.',
   'Earned the first trainer-verified skill trophy.':
       'Wedi ennill y tlws sgil cyntaf a wiriwyd gan hyfforddwr.',
   'Encourage the dog to return to the handler to restart the game.':
@@ -1193,21 +1281,26 @@ const Map<String, String> _cy = {
       'Ymarferwch y sgil ar arwynebau newydd a gyda phethau bach i dynnu sylw.',
   'Help the dog understand and control movement of the back feet.':
       'Helpwch y ci i ddeall a rheoli symudiad y traed ôl.',
-  'Help your dog move confidently, understand their body and build safe foundations for future flyball work.': 'Helpwch eich ci i symud yn hyderus, deall ei gorff ac adeiladu sylfeini diogel ar gyfer gwaith flyball yn y dyfodol.',
+  'Help your dog move confidently, understand their body and build safe foundations for future flyball work.':
+      'Helpwch eich ci i symud yn hyderus, deall ei gorff ac adeiladu sylfeini diogel ar gyfer gwaith flyball yn y dyfodol.',
   'Increase distance without losing the quality of the pickup or return.':
       'Cynyddwch y pellter heb golli ansawdd y codi na’r dychwelyd.',
   'Increase the run gradually without losing enthusiasm.':
       'Cynyddwch y rhediad yn raddol heb golli brwdfrydedd.',
-  'Introduce body awareness and targeting skills that will later support safe box work.': 'Cyflwynwch ymwybyddiaeth o’r corff a sgiliau targedu a fydd yn cefnogi gwaith bocs diogel yn nes ymlaen.',
+  'Introduce body awareness and targeting skills that will later support safe box work.':
+      'Cyflwynwch ymwybyddiaeth o’r corff a sgiliau targedu a fydd yn cefnogi gwaith bocs diogel yn nes ymlaen.',
   'Introduce the target calmly and reward confident interaction.':
       'Cyflwynwch y targed yn dawel a gwobrwywch ryngweithio hyderus.',
-  'Keep connection with the handler while the world becomes a little more exciting.': 'Cadwch gysylltiad â’r triniwr wrth i’r byd fynd ychydig yn fwy cyffrous.',
+  'Keep connection with the handler while the world becomes a little more exciting.':
+      'Cadwch gysylltiad â’r triniwr wrth i’r byd fynd ychydig yn fwy cyffrous.',
   'Keep tugging controlled, comfortable and suitable for the individual dog.':
       'Cadwch y tynnu’n rheoledig, yn gyfforddus ac yn addas i’r ci unigol.',
   'Learn how to calmly reset when attention disappears.':
       'Dysgwch sut i ailosod yn dawel pan fydd sylw’n diflannu.',
-  'Learn what useful engagement looks like before asking for formal behaviour.': 'Dysgwch sut mae ymgysylltu defnyddiol yn edrych cyn gofyn am ymddygiad ffurfiol.',
-  'Learn when your dog can still think and when the environment is too difficult.': 'Dysgwch pryd mae eich ci yn dal i allu meddwl a phryd mae’r amgylchedd yn rhy anodd.',
+  'Learn what useful engagement looks like before asking for formal behaviour.':
+      'Dysgwch sut mae ymgysylltu defnyddiol yn edrych cyn gofyn am ymddygiad ffurfiol.',
+  'Learn when your dog can still think and when the environment is too difficult.':
+      'Dysgwch pryd mae eich ci yn dal i allu meddwl a phryd mae’r amgylchedd yn rhy anodd.',
   'Link simple skills without turning the session into a long drill.':
       'Cysylltwch sgiliau syml heb droi’r sesiwn yn ymarfer hir.',
   'Logged in for 14 days in a row.':
@@ -1242,7 +1335,8 @@ const Map<String, String> _cy = {
       'Gwobrwywch y ci’n dda am ddewis y triniwr dros y peth sy’n tynnu sylw.',
   'Practise a known skill while something mildly interesting is nearby.':
       'Ymarferwch sgil gyfarwydd tra bo rhywbeth ychydig yn ddiddorol gerllaw.',
-  'Practise around mild distractions while keeping success high.': 'Ymarferwch o amgylch pethau bach sy’n tynnu sylw gan gadw llwyddiant yn uchel.',
+  'Practise around mild distractions while keeping success high.':
+      'Ymarferwch o amgylch pethau bach sy’n tynnu sylw gan gadw llwyddiant yn uchel.',
   'Practise comfortable turns in both directions.':
       'Ymarferwch droadau cyfforddus i’r ddau gyfeiriad.',
   'Practise moving smoothly between food, toys and praise.':
@@ -1257,19 +1351,28 @@ const Map<String, String> _cy = {
       'Gosodwch adalwadau byr a hawdd lle mae llwyddiant bron yn sicr.',
   'Shape a smooth turn away from the target rather than stopping on it.':
       'Siapiwch dro llyfn i ffwrdd o’r targed yn hytrach na stopio arno.',
-  'Show a confident drive to the target, accurate body placement and a smooth turn away for reward.': 'Dangoswch yrru hyderus at y targed, lleoliad corff cywir a thro llyfn i ffwrdd am wobr.',
-  'Show a confident pickup of a stationary ball and a direct, enthusiastic return to the handler.': 'Dangoswch godi pêl llonydd yn hyderus a dychwelyd yn uniongyrchol ac yn frwdfrydig at y triniwr.',
+  'Show a confident drive to the target, accurate body placement and a smooth turn away for reward.':
+      'Dangoswch yrru hyderus at y targed, lleoliad corff cywir a thro llyfn i ffwrdd am wobr.',
+  'Show a confident pickup of a stationary ball and a direct, enthusiastic return to the handler.':
+      'Dangoswch godi pêl llonydd yn hyderus a dychwelyd yn uniongyrchol ac yn frwdfrydig at y triniwr.',
   'Show a fast return that flows straight into the dog’s preferred reward.':
       'Dangoswch ddychweliad cyflym sy’n llifo’n syth i hoff wobr y ci.',
-  'Show a known skill around a mild distraction, with the dog able to reconnect quickly with the handler.': 'Dangoswch sgil gyfarwydd o amgylch peth bach sy’n tynnu sylw, gyda’r ci yn gallu ailgysylltu’n gyflym â’r triniwr.',
-  'Show a quick, enthusiastic recall from a useful distance with a clean reward at the handler.': 'Dangoswch adalw cyflym a brwdfrydig o bellter defnyddiol gyda gwobr glir wrth y triniwr.',
-  'Show calm body-awareness exercises, controlled movement and confidence on safe, suitable surfaces.': 'Dangoswch ymarferion ymwybyddiaeth o’r corff yn dawel, symudiad rheoledig a hyder ar arwynebau diogel ac addas.',
+  'Show a known skill around a mild distraction, with the dog able to reconnect quickly with the handler.':
+      'Dangoswch sgil gyfarwydd o amgylch peth bach sy’n tynnu sylw, gyda’r ci yn gallu ailgysylltu’n gyflym â’r triniwr.',
+  'Show a quick, enthusiastic recall from a useful distance with a clean reward at the handler.':
+      'Dangoswch adalw cyflym a brwdfrydig o bellter defnyddiol gyda gwobr glir wrth y triniwr.',
+  'Show calm body-awareness exercises, controlled movement and confidence on safe, suitable surfaces.':
+      'Dangoswch ymarferion ymwybyddiaeth o’r corff yn dawel, symudiad rheoledig a hyder ar arwynebau diogel ac addas.',
   'Show confident movement suitable for the dog’s age and ability.':
       'Dangoswch symudiad hyderus sy’n addas i oedran a gallu’r ci.',
-  'Show the body-awareness and target foundations learned earlier.': 'Dangoswch y sylfeini ymwybyddiaeth o’r corff a tharged a ddysgwyd yn gynharach.',
-  'Show your dog choosing to engage with you, following your movement and staying connected around a mild distraction.': 'Dangoswch eich ci yn dewis ymgysylltu â chi, yn dilyn eich symudiad ac yn cadw cysylltiad o amgylch peth bach sy’n tynnu sylw.',
-  'Show your dog choosing to play, tugging confidently and re-engaging after the toy is released.': 'Dangoswch eich ci yn dewis chwarae, yn tynnu’n hyderus ac yn ailgysylltu ar ôl rhyddhau’r tegan.',
-  'Submit one final video showing a selection of your best foundation skills. A trainer will check that you and your dog are ready for the next stage.': 'Cyflwynwch un fideo terfynol sy’n dangos detholiad o’ch sgiliau sylfaen gorau. Bydd hyfforddwr yn gwirio eich bod chi a’ch ci yn barod ar gyfer y cam nesaf.',
+  'Show the body-awareness and target foundations learned earlier.':
+      'Dangoswch y sylfeini ymwybyddiaeth o’r corff a tharged a ddysgwyd yn gynharach.',
+  'Show your dog choosing to engage with you, following your movement and staying connected around a mild distraction.':
+      'Dangoswch eich ci yn dewis ymgysylltu â chi, yn dilyn eich symudiad ac yn cadw cysylltiad o amgylch peth bach sy’n tynnu sylw.',
+  'Show your dog choosing to play, tugging confidently and re-engaging after the toy is released.':
+      'Dangoswch eich ci yn dewis chwarae, yn tynnu’n hyderus ac yn ailgysylltu ar ôl rhyddhau’r tegan.',
+  'Submit one final video showing a selection of your best foundation skills. A trainer will check that you and your dog are ready for the next stage.':
+      'Cyflwynwch un fideo terfynol sy’n dangos detholiad o’ch sgiliau sylfaen gorau. Bydd hyfforddwr yn gwirio eich bod chi a’ch ci yn barod ar gyfer y cam nesaf.',
   'Submitted the first skill assessment.':
       'Wedi cyflwyno’r asesiad sgil cyntaf.',
   'Take the skill into a slightly busier setting without making it too hard.':
@@ -1280,16 +1383,19 @@ const Map<String, String> _cy = {
       'Dysgwch godi pêl llonydd yn hyderus a dychwelyd yn gyflym at y triniwr.',
   'Teach that releasing the toy does not mean the game is over.':
       'Dysgwch nad yw rhyddhau’r tegan yn golygu bod y gêm ar ben.',
-  'Use clear timing so your dog understands exactly what earned the reward.': 'Defnyddiwch amseru clir fel bod eich ci yn deall yn union beth enillodd y wobr.',
+  'Use clear timing so your dog understands exactly what earned the reward.':
+      'Defnyddiwch amseru clir fel bod eich ci yn deall yn union beth enillodd y wobr.',
   'Use low, safe poles to encourage careful foot placement.':
       'Defnyddiwch bolion isel a diogel i annog gosod traed yn ofalus.',
   'Use reward position to bring your dog right back to you.':
       'Defnyddiwch leoliad y wobr i ddod â’ch ci yn syth yn ôl atoch.',
   'Use reward position to support a clean, efficient movement pattern.':
       'Defnyddiwch leoliad y wobr i gefnogi patrwm symud glân ac effeithlon.',
-  'Work out which toy and style of play your dog really values.': 'Darganfyddwch pa degan a pha fath o chwarae mae eich ci yn ei werthfawrogi fwyaf.',
+  'Work out which toy and style of play your dog really values.':
+      'Darganfyddwch pa degan a pha fath o chwarae mae eich ci yn ei werthfawrogi fwyaf.',
 
-  'Search people once, then manage their role, Doubloons and dogs from the same place.': 'Chwiliwch am bobl unwaith, yna rheolwch eu rôl, eu Doubloons a’u cŵn o’r un lle.',
+  'Search people once, then manage their role, Doubloons and dogs from the same place.':
+      'Chwiliwch am bobl unwaith, yna rheolwch eu rôl, eu Doubloons a’u cŵn o’r un lle.',
   'No people match that search.':
       'Nid oes unrhyw un yn cyfateb i’r chwiliad hwnnw.',
   '+1 DOUBLOON': '+1 DOUBLOON',
