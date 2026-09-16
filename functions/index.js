@@ -387,15 +387,20 @@ exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: '
       const storagePath = String(data.storagePath || '');
 
       if (storagePath.startsWith('academyVideos/')) {
-        await bucket
-          .file(storagePath)
-          .delete({ignoreNotFound: true})
-          .catch(err => {
-            console.error(
-              `Could not delete assessment video ${storagePath}`,
-              err,
-            );
-          });
+        try {
+          await bucket
+            .file(storagePath)
+            .delete({ignoreNotFound: true});
+        } catch (err) {
+          console.error(
+            `Could not delete assessment video ${storagePath}`,
+            err,
+          );
+
+          // Keep the Firestore record intact so tomorrow's
+          // cleanup can safely retry the Storage deletion.
+          continue;
+        }
       }
 
       await doc.ref.update({
@@ -431,15 +436,20 @@ exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: '
       const storagePath = String(data.storagePath || '');
 
       if (storagePath.startsWith('academyVideos/')) {
-        await bucket
-          .file(storagePath)
-          .delete({ignoreNotFound: true})
-          .catch(err => {
-            console.error(
-              `Could not delete Help Me video ${storagePath}`,
-              err,
-            );
-          });
+        try {
+          await bucket
+            .file(storagePath)
+            .delete({ignoreNotFound: true});
+        } catch (err) {
+          console.error(
+            `Could not delete Help Me video ${storagePath}`,
+            err,
+          );
+
+          // Keep the Firestore record intact so tomorrow's
+          // cleanup can safely retry the Storage deletion.
+          continue;
+        }
       }
 
       await doc.ref.update({
