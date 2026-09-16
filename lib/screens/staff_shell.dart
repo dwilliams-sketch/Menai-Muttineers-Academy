@@ -776,7 +776,7 @@ class ReviewQueue extends StatelessWidget {
                             if (u != null) await launchUrl(u);
                           },
                           icon: const Icon(Icons.open_in_new),
-                          label: const I18nText('Open original'),
+                          label: const I18nText('Download / open original'),
                         ),
                       if (academyUpload && !safelyArchived)
                         OutlinedButton.icon(
@@ -992,7 +992,7 @@ Future<void> _watchAcademyVideo(
         TextButton.icon(
           onPressed: () => launchUrl(uri),
           icon: const Icon(Icons.open_in_new),
-          label: const I18nText('Open original'),
+          label: const I18nText('Download / open original'),
         ),
         TextButton(
           onPressed: () => Navigator.pop(dialogContext),
@@ -1492,7 +1492,9 @@ class _StaffHelpThreadState extends State<StaffHelpThread> {
                                         if (u != null) await launchUrl(u);
                                       },
                                       icon: const Icon(Icons.open_in_new),
-                                      label: const I18nText('Open original'),
+                                      label: const I18nText(
+                                        'Download / open original',
+                                      ),
                                     ),
                                   if (academyUpload && !safelyArchived)
                                     TextButton.icon(
@@ -3746,7 +3748,7 @@ class _VideoStoragePanelState extends State<VideoStoragePanel> {
                   ),
                   _VideoStorageMetric(
                     icon: Icons.archive,
-                    label: 'Archived to Drive',
+                    label: 'Safely archived',
                     value: '${data['archivedToDrive'] ?? 0}',
                   ),
                   _VideoStorageMetric(

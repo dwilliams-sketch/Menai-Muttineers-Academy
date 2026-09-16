@@ -361,7 +361,7 @@ const Map<String, String> _pirate = {
   'Awaiting deletion': 'Ready to go overboard',
   'Marked to keep': 'Marked for the Captain',
   'Waiting assessments': 'Waiting Captain’s checks',
-  'Archived to Drive': 'Stowed in the archive',
+  'Safely archived': 'Safely stowed ashore',
   'Deleted last cleanup': 'Thrown overboard last cleanup',
   'Last storage check': 'Last hold inspection',
   'No storage check has run yet.':
@@ -513,9 +513,15 @@ const Map<String, String> _pirate = {
 
   // Common actions
   'Watch in app': 'WATCH ABOARD',
-  'Open original': 'OPEN ORIGINAL',
+  'Download / open original': 'TAKE A COPY ASHORE',
   'Keep for records': 'STOW IN THE CAPTAIN’S ARCHIVE',
   'Kept for records': 'STOWED FOR THE CAPTAIN',
+  'MARK SAFELY ARCHIVED': 'STOW SAFELY IN THE ARCHIVE',
+  'Archive copy saved?': 'Copy safely stowed?',
+  'Download the video and save it somewhere permanent first. You can paste the Drive or folder link below if you want.': 'Take a copy ashore and stow it somewhere safe first. Add the treasure-map link below if ye have one.',
+  'Archive link (optional)': 'Archive treasure-map link (optional)',
+  'CONFIRM ARCHIVED': 'AYE — SAFELY STOWED',
+  'Video marked safely archived.': 'Video marked safely stowed in the archive.',
   'Video could not be played here.':
       'This moving picture could not be played aboard.',
 
@@ -636,7 +642,7 @@ const Map<String, String> _cy = {
   'Awaiting deletion': 'Yn aros i gael eu dileu',
   'Marked to keep': 'Wedi’u marcio i’w cadw',
   'Waiting assessments': 'Asesiadau sy’n aros',
-  'Archived to Drive': 'Wedi’u harchifo i Drive',
+  'Safely archived': 'Wedi’i archifo’n ddiogel',
   'Deleted last cleanup': 'Wedi’u dileu yn y glanhau diwethaf',
   'Last storage check': 'Gwiriad storfa diwethaf',
   'No storage check has run yet.': 'Nid oes gwiriad storfa wedi rhedeg eto.',
@@ -700,9 +706,16 @@ const Map<String, String> _cy = {
   'Send reset link': 'Anfon dolen ailosod',
   'Cancel': 'Canslo',
   'Watch in app': 'Gwylio yn yr ap',
-  'Open original': 'Agor y gwreiddiol',
+  'Download / open original': 'Lawrlwytho / agor y gwreiddiol',
   'Keep for records': 'Cadw ar gyfer cofnodion',
   'Kept for records': 'Wedi’i gadw ar gyfer cofnodion',
+  'MARK SAFELY ARCHIVED': 'MARCIO WEDI’I ARCHIFO’N DDIOGEL',
+  'Archive copy saved?': 'Copi archif wedi’i gadw?',
+  'Download the video and save it somewhere permanent first. You can paste the Drive or folder link below if you want.': 'Lawrlwythwch y fideo a’i gadw mewn lle parhaol yn gyntaf. Gallwch ludo dolen Drive neu ffolder isod os dymunwch.',
+  'Archive link (optional)': 'Dolen archif (dewisol)',
+  'CONFIRM ARCHIVED': 'CADARNHAU WEDI’I ARCHIFO',
+  'Video marked safely archived.':
+      'Fideo wedi’i farcio fel wedi’i archifo’n ddiogel.',
   'Video could not be played here.': 'Ni ellid chwarae’r fideo yma.',
   'Back to account choices': 'Yn ôl i’r dewisiadau cyfrif',
   'Welcome aboard — we’ll set you up in three simple steps.':
