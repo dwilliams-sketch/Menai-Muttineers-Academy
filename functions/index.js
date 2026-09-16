@@ -253,6 +253,130 @@ exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: '
       }
     }
   }
+
+  // ----------------------------------------------------------
+  // V1.4.2 temporary Academy video housekeeping
+  // ----------------------------------------------------------
+  let deletedAssessmentVideos = 0;
+  let deletedHelpVideos = 0;
+
+  try {
+    const dueAssessments = await db
+      .collection('submissions')
+      .where('videoDeleteAfter', '<=', Timestamp.fromDate(now))
+      .get();
+
+    for (const doc of dueAssessments.docs) {
+      const data = doc.data();
+
+      if (String(data.videoSource || '') !== 'academy_upload') continue;
+      if (data.videoArchiveRequested === true) continue;
+      if (data.videoArchived === true) continue;
+
+      const storagePath = String(data.storagePath || '');
+
+      if (storagePath.startsWith('academyVideos/')) {
+        await bucket
+          .file(storagePath)
+          .delete({ignoreNotFound: true})
+          .catch(err => {
+            console.error(
+              `Could not delete assessment video ${storagePath}`,
+              err,
+            );
+          });
+      }
+
+      await doc.ref.update({
+        videoUrl: '',
+        storagePath: '',
+        videoSource: 'deleted',
+        videoSizeBytes: 0,
+        videoDeletedAt: FieldValue.serverTimestamp(),
+        videoDeleteAfter: null,
+      });
+
+      deletedAssessmentVideos += 1;
+    }
+  } catch (err) {
+    console.error('Assessment video cleanup failed', err);
+  }
+
+  try {
+    const dueHelpVideos = await db
+      .collectionGroup('messages')
+      .where('videoDeleteAfter', '<=', Timestamp.fromDate(now))
+      .get();
+
+    for (const doc of dueHelpVideos.docs) {
+      const data = doc.data();
+
+      if (String(data.videoSource || '') !== 'academy_upload') continue;
+      if (data.videoArchiveRequested === true) continue;
+      if (data.videoArchived === true) continue;
+
+      const storagePath = String(data.storagePath || '');
+
+      if (storagePath.startsWith('academyVideos/')) {
+        await bucket
+          .file(storagePath)
+          .delete({ignoreNotFound: true})
+          .catch(err => {
+            console.error(
+              `Could not delete Help Me video ${storagePath}`,
+              err,
+            );
+          });
+      }
+
+      await doc.ref.update({
+        videoUrl: '',
+        storagePath: '',
+        videoSource: 'deleted',
+        videoSizeBytes: 0,
+        videoDeletedAt: FieldValue.serverTimestamp(),
+        videoDeleteAfter: null,
+      });
+
+      deletedHelpVideos += 1;
+    }
+  } catch (err) {
+    console.error('Help Me video cleanup failed', err);
+  }
+
+  // Calculate real Storage usage for the Captain/Admin dashboard.
+  try {
+    const [videoFiles] = await bucket.getFiles({
+      prefix: 'academyVideos/',
+    });
+
+    let totalBytes = 0;
+
+    for (const file of videoFiles) {
+      const size = Number(file.metadata?.size || 0);
+      if (Number.isFinite(size)) totalBytes += size;
+    }
+
+    await db.collection('settings').doc('videoStorage').set(
+      {
+        fileCount: videoFiles.length,
+        totalBytes,
+        totalMegabytes: Number(
+          (totalBytes / (1024 * 1024)).toFixed(2),
+        ),
+        totalGigabytes: Number(
+          (totalBytes / (1024 * 1024 * 1024)).toFixed(3),
+        ),
+        deletedAssessmentVideosLastRun: deletedAssessmentVideos,
+        deletedHelpVideosLastRun: deletedHelpVideos,
+        retentionDays: 30,
+        lastCheckedAt: FieldValue.serverTimestamp(),
+      },
+      {merge: true},
+    );
+  } catch (err) {
+    console.error('Academy video storage calculation failed', err);
+  }
 });
 
 async function deleteQuery(query, recursive = false) {
@@ -321,6 +445,12 @@ exports.deleteAcademyAccount = onCall(async (request) => {
     await bucket.file(`dogs/${dogDoc.id}/profile.jpg`).delete({ignoreNotFound: true}).catch(() => null);
   }
   await bucket.file(`profiles/${targetUid}/profile.jpg`).delete({ignoreNotFound: true}).catch(() => null);
+
+  // Remove assessment/help footage belonging to the deleted learner.
+  await bucket
+    .deleteFiles({prefix: `academyVideos/${targetUid}/`})
+    .catch(() => null);
+
   await db.recursiveDelete(targetRef);
 
   await db.collection('auditLog').add({

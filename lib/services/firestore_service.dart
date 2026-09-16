@@ -719,11 +719,19 @@ class FirestoreService {
         .doc('first_skill');
     final firstSkillExists = (await firstSkillRef.get()).exists;
     final batch = db.batch();
+    final academyUpload =
+        (sub['videoSource'] ?? '').toString() == 'academy_upload';
+    final keepVideo =
+        sub['videoArchiveRequested'] == true || sub['videoArchived'] == true;
+
     batch.update(db.collection('submissions').doc(submissionId), {
       'status': passed ? 'passed' : 'practise',
       'feedback': feedback.trim(),
       'reviewerName': reviewerName,
       'reviewedAt': FieldValue.serverTimestamp(),
+      'videoDeleteAfter': academyUpload && !keepVideo
+          ? Timestamp.fromDate(DateTime.now().add(const Duration(days: 30)))
+          : null,
     });
     if (passed) {
       final trophy = db
@@ -882,11 +890,36 @@ class FirestoreService {
       .collection('lessonHelp')
       .doc(threadId)
       .update({'assignedTo': trainerName, 'status': 'in_progress'});
-  Future<void> resolveHelpThread(String threadId) =>
-      db.collection('lessonHelp').doc(threadId).update({
-        'status': 'resolved',
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+  Future<void> resolveHelpThread(String threadId) async {
+    final ref = db.collection('lessonHelp').doc(threadId);
+    final messages = await ref.collection('messages').get();
+    final deleteAfter = Timestamp.fromDate(
+      DateTime.now().add(const Duration(days: 30)),
+    );
+
+    final batch = db.batch();
+
+    batch.update(ref, {
+      'status': 'resolved',
+      'updatedAt': FieldValue.serverTimestamp(),
+      'resolvedAt': FieldValue.serverTimestamp(),
+    });
+
+    for (final message in messages.docs) {
+      final data = message.data();
+      final academyUpload =
+          (data['videoSource'] ?? '').toString() == 'academy_upload';
+      final keepVideo =
+          data['videoArchiveRequested'] == true ||
+          data['videoArchived'] == true;
+
+      if (academyUpload && !keepVideo) {
+        batch.update(message.reference, {'videoDeleteAfter': deleteAfter});
+      }
+    }
+
+    await batch.commit();
+  }
 
   // Training diary
   Future<void> addTrainingLog({
