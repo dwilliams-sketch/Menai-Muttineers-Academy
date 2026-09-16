@@ -3440,6 +3440,8 @@ class _StaffControlState extends State<StaffControl> {
           ),
         ),
       ),
+      if (widget.profile.isCaptain || widget.profile.isAdmin)
+        VideoStoragePanel(profile: widget.profile),
       if (widget.profile.canManageAccounts)
         RoleManager(profile: widget.profile),
       if (widget.profile.canManageAccounts)
@@ -3464,6 +3466,256 @@ class _StaffControlState extends State<StaffControl> {
       if (widget.profile.canManageAccounts) AuditLogPanel(),
       if (widget.profile.canManageAccounts) SystemHealth(),
     ],
+  );
+}
+
+class VideoStoragePanel extends StatefulWidget {
+  final AppUser profile;
+
+  const VideoStoragePanel({super.key, required this.profile});
+
+  @override
+  State<VideoStoragePanel> createState() => _VideoStoragePanelState();
+}
+
+class _VideoStoragePanelState extends State<VideoStoragePanel> {
+  final service = FirestoreService();
+  final functions = AdminFunctionsService();
+
+  bool refreshing = false;
+
+  Future<void> _refresh() async {
+    if (refreshing) return;
+
+    setState(() => refreshing = true);
+
+    try {
+      await functions.refreshVideoStorageStats();
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: I18nText('Storage refreshed.')));
+      }
+    } catch (error) {
+      debugPrint('Video storage refresh failed: $error');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: I18nText('Could not refresh storage right now.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => refreshing = false);
+      }
+    }
+  }
+
+  String _storageText(Map<String, dynamic> data) {
+    final gb = (data['totalGigabytes'] as num?)?.toDouble() ?? 0;
+    final mb = (data['totalMegabytes'] as num?)?.toDouble() ?? 0;
+
+    if (gb >= 1) {
+      return '${gb.toStringAsFixed(2)} GB';
+    }
+
+    return '${mb.toStringAsFixed(1)} MB';
+  }
+
+  String _lastChecked(dynamic value) {
+    if (value is! Timestamp) return tr('Not checked yet');
+
+    final date = value.toDate().toLocal();
+
+    String two(int n) => n.toString().padLeft(2, '0');
+
+    return '${two(date.day)}/${two(date.month)}/${date.year} '
+        '${two(date.hour)}:${two(date.minute)}';
+  }
+
+  @override
+  Widget build(BuildContext context) => ExpansionTile(
+    leading: const Icon(Icons.video_library),
+    title: const I18nText('Academy Video Storage'),
+    subtitle: const I18nText(
+      'Temporary learner assessment and Help Me footage.',
+    ),
+    childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+    children: [
+      StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: service.db
+            .collection('settings')
+            .doc('videoStorage')
+            .snapshots(),
+        builder: (context, snap) {
+          final data = snap.data?.data();
+
+          if (data == null) {
+            return Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: I18nText(
+                    'No storage check has run yet.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: refreshing ? null : _refresh,
+                  icon: refreshing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                  label: I18nText(
+                    refreshing ? 'Checking storage...' : 'REFRESH STORAGE',
+                  ),
+                ),
+              ],
+            );
+          }
+
+          final deletedLastRun =
+              ((data['deletedAssessmentVideosLastRun'] as num?)?.toInt() ?? 0) +
+              ((data['deletedHelpVideosLastRun'] as num?)?.toInt() ?? 0);
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _VideoStorageMetric(
+                    icon: Icons.video_file,
+                    label: 'Videos stored',
+                    value: '${data['fileCount'] ?? 0}',
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.cloud,
+                    label: 'Storage used',
+                    value: _storageText(data),
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.hourglass_bottom,
+                    label: 'Temporary videos',
+                    value: '${data['temporaryVideos'] ?? 0}',
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.delete_sweep,
+                    label: 'Awaiting deletion',
+                    value: '${data['awaitingDeletion'] ?? 0}',
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.bookmark,
+                    label: 'Marked to keep',
+                    value: '${data['markedToKeep'] ?? 0}',
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.fact_check,
+                    label: 'Waiting assessments',
+                    value: '${data['waitingAssessmentVideos'] ?? 0}',
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.archive,
+                    label: 'Archived to Drive',
+                    value: '${data['archivedToDrive'] ?? 0}',
+                  ),
+                  _VideoStorageMetric(
+                    icon: Icons.cleaning_services,
+                    label: 'Deleted last cleanup',
+                    value: '$deletedLastRun',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.schedule),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const I18nText(
+                              'Last storage check',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            Text(_lastChecked(data['lastCheckedAt'])),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: I18nText(
+                  'Temporary Academy videos are removed 30 days after an assessment is reviewed or a Help Me conversation is resolved, unless you mark them to keep.',
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonalIcon(
+                  onPressed: refreshing ? null : _refresh,
+                  icon: refreshing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                  label: I18nText(
+                    refreshing ? 'Checking storage...' : 'REFRESH STORAGE',
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    ],
+  );
+}
+
+class _VideoStorageMetric extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _VideoStorageMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 170,
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon),
+            const SizedBox(height: 8),
+            Text(value, style: Theme.of(context).textTheme.headlineSmall),
+            I18nText(label),
+          ],
+        ),
+      ),
+    ),
   );
 }
 

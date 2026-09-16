@@ -159,6 +159,114 @@ exports.pushAcademyNotification = onDocumentCreated('notifications/{notification
   await Promise.all(cleanup);
 });
 
+
+async function updateVideoStorageStats(options = {}) {
+  const now = new Date();
+
+  const [videoFiles] = await bucket.getFiles({
+    prefix: 'academyVideos/',
+  });
+
+  let totalBytes = 0;
+
+  for (const file of videoFiles) {
+    const size = Number(file.metadata?.size || 0);
+    if (Number.isFinite(size)) totalBytes += size;
+  }
+
+  const submissions = await db.collection('submissions').get();
+  const helpMessages = await db.collectionGroup('messages').get();
+
+  let temporaryVideos = 0;
+  let awaitingDeletion = 0;
+  let markedToKeep = 0;
+  let archivedToDrive = 0;
+  let waitingAssessmentVideos = 0;
+  let expiredNow = 0;
+
+  function inspectVideo(data, isAssessment = false) {
+    if (String(data.videoSource || '') !== 'academy_upload') return;
+
+    const archiveRequested = data.videoArchiveRequested === true;
+    const archived = data.videoArchived === true;
+    const deleteAfter = data.videoDeleteAfter?.toDate?.();
+
+    if (!archiveRequested && !archived) {
+      temporaryVideos += 1;
+    }
+
+    if (archiveRequested && !archived) {
+      markedToKeep += 1;
+    }
+
+    if (archived) {
+      archivedToDrive += 1;
+    }
+
+    if (deleteAfter && !archiveRequested && !archived) {
+      awaitingDeletion += 1;
+
+      if (deleteAfter <= now) {
+        expiredNow += 1;
+      }
+    }
+
+    if (
+      isAssessment &&
+      String(data.status || '') === 'waiting'
+    ) {
+      waitingAssessmentVideos += 1;
+    }
+  }
+
+  for (const doc of submissions.docs) {
+    inspectVideo(doc.data(), true);
+  }
+
+  for (const doc of helpMessages.docs) {
+    inspectVideo(doc.data(), false);
+  }
+
+  const stats = {
+    fileCount: videoFiles.length,
+    totalBytes,
+    totalMegabytes: Number(
+      (totalBytes / (1024 * 1024)).toFixed(2),
+    ),
+    totalGigabytes: Number(
+      (totalBytes / (1024 * 1024 * 1024)).toFixed(3),
+    ),
+    temporaryVideos,
+    awaitingDeletion,
+    markedToKeep,
+    archivedToDrive,
+    waitingAssessmentVideos,
+    expiredNow,
+    retentionDays: 30,
+    lastCheckedAt: FieldValue.serverTimestamp(),
+  };
+
+  if (Number.isFinite(options.deletedAssessmentVideos)) {
+    stats.deletedAssessmentVideosLastRun =
+      options.deletedAssessmentVideos;
+  }
+
+  if (Number.isFinite(options.deletedHelpVideos)) {
+    stats.deletedHelpVideosLastRun =
+      options.deletedHelpVideos;
+  }
+
+  await db
+    .collection('settings')
+    .doc('videoStorage')
+    .set(stats, {merge: true});
+
+  return {
+    ...stats,
+    lastCheckedAt: new Date().toISOString(),
+  };
+}
+
 exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: 'Europe/London'}, async () => {
   // V1.4 learner currency is fixed: 1 Doubloon = £5 = 30 days for one dog.
   const cost = 5;
@@ -344,36 +452,12 @@ exports.dailyAcademyMaintenance = onSchedule({schedule: '0 9 * * *', timeZone: '
     console.error('Help Me video cleanup failed', err);
   }
 
-  // Calculate real Storage usage for the Captain/Admin dashboard.
+  // Refresh Captain/Admin storage dashboard statistics.
   try {
-    const [videoFiles] = await bucket.getFiles({
-      prefix: 'academyVideos/',
+    await updateVideoStorageStats({
+      deletedAssessmentVideos,
+      deletedHelpVideos,
     });
-
-    let totalBytes = 0;
-
-    for (const file of videoFiles) {
-      const size = Number(file.metadata?.size || 0);
-      if (Number.isFinite(size)) totalBytes += size;
-    }
-
-    await db.collection('settings').doc('videoStorage').set(
-      {
-        fileCount: videoFiles.length,
-        totalBytes,
-        totalMegabytes: Number(
-          (totalBytes / (1024 * 1024)).toFixed(2),
-        ),
-        totalGigabytes: Number(
-          (totalBytes / (1024 * 1024 * 1024)).toFixed(3),
-        ),
-        deletedAssessmentVideosLastRun: deletedAssessmentVideos,
-        deletedHelpVideosLastRun: deletedHelpVideos,
-        retentionDays: 30,
-        lastCheckedAt: FieldValue.serverTimestamp(),
-      },
-      {merge: true},
-    );
   } catch (err) {
     console.error('Academy video storage calculation failed', err);
   }
@@ -463,6 +547,29 @@ exports.deleteAcademyAccount = onCall(async (request) => {
   return {ok: true, removedDogs: dogIds.length};
 });
 
+
+
+exports.refreshVideoStorageStats = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in first.');
+  }
+
+  const caller = await db
+    .collection('users')
+    .doc(request.auth.uid)
+    .get();
+
+  const role = String(caller.data()?.role || '');
+
+  if (!['admin', 'captain'].includes(role)) {
+    throw new HttpsError(
+      'permission-denied',
+      'Admin/Captain access required.',
+    );
+  }
+
+  return await updateVideoStorageStats();
+});
 
 exports.translateAdminText = onCall(async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
