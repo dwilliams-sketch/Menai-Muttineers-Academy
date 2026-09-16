@@ -1538,6 +1538,152 @@ class _DogDirectoryState extends State<DogDirectory> {
     controller.dispose();
   }
 
+  String _dogStatus(Map<String, dynamic> dog, Map<String, dynamic> owner) {
+    final raw = (dog['academyStatus'] ?? '').toString();
+
+    if (raw.isEmpty) {
+      return owner['activated'] == true ? 'active' : 'awaiting';
+    }
+
+    if (raw == 'active') {
+      final until = (dog['accessUntil'] as Timestamp?)?.toDate();
+      if (until != null && until.isBefore(DateTime.now())) {
+        return 'renewal_due';
+      }
+    }
+
+    return raw;
+  }
+
+  String _dateLabel(dynamic value) {
+    if (value is! Timestamp) return '';
+    final d = value.toDate();
+    return '${d.day.toString().padLeft(2, '0')}/'
+        '${d.month.toString().padLeft(2, '0')}/'
+        '${d.year}';
+  }
+
+  Future<void> _authoriseDog(
+    BuildContext context, {
+    required String uid,
+    required String dogId,
+  }) async {
+    final ok = await service.activateDogUsingCredit(
+      uid: uid,
+      dogId: dogId,
+      actor: widget.profile.name,
+    );
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: I18nText(
+          ok
+              ? '30 days of access authorised.'
+              : 'Not enough Doubloons. Add at least 1 Doubloon first.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pauseDog(
+    BuildContext context, {
+    required String uid,
+    required String dogId,
+  }) async {
+    await service.requestDogPause(uid: uid, dogId: dogId);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: I18nText(
+          'Pause scheduled for the end of the current paid period.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _cancelDogPause(
+    BuildContext context, {
+    required String dogId,
+  }) async {
+    await service.cancelDogPause(dogId);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: I18nText('Scheduled pause cancelled.')),
+    );
+  }
+
+  Future<void> _pauseAllDogs(
+    BuildContext context, {
+    required String uid,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const I18nText('Pause all active dogs?'),
+        content: const I18nText(
+          'Each active dog will keep its current paid access until the end date, then stop instead of renewing.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const I18nText('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const I18nText('PAUSE ALL DOGS'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final changed = await service.requestAllDogsPause(
+      uid: uid,
+      actor: widget.profile.name,
+    );
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: I18nText(
+          changed == 0
+              ? 'No active dogs needed pausing.'
+              : 'All active dogs have been scheduled to pause.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _cancelAllPauses(
+    BuildContext context, {
+    required String uid,
+  }) async {
+    final changed = await service.cancelAllDogPauses(
+      uid: uid,
+      actor: widget.profile.name,
+    );
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: I18nText(
+          changed == 0
+              ? 'No scheduled pauses to cancel.'
+              : 'All scheduled pauses have been cancelled.',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(
     BuildContext context,
@@ -1619,6 +1765,22 @@ class _DogDirectoryState extends State<DogDirectory> {
               final dogNames = dogs
                   .map((d) => (d.data()['name'] ?? 'Dog').toString())
                   .join(', ');
+
+              final activeDogs = dogs.where((d) {
+                return _dogStatus(d.data(), owner) == 'active';
+              }).length;
+
+              final renewingDogs = dogs.where((d) {
+                return _dogStatus(d.data(), owner) == 'active' &&
+                    d.data()['pauseRequested'] != true;
+              }).length;
+
+              final scheduledPauses = dogs
+                  .where((d) => d.data()['pauseRequested'] == true)
+                  .length;
+
+              final renewalPounds = renewingDogs * academyDoubloonPounds;
+
               return Card(
                 child: ExpansionTile(
                   leading: CircleAvatar(
@@ -1696,6 +1858,58 @@ class _DogDirectoryState extends State<DogDirectory> {
                         ],
                       ),
                     ],
+                    if (role == 'learner' && dogs.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          Chip(
+                            avatar: const Icon(Icons.pets, size: 18),
+                            label: I18nText('Registered dogs: ${dogs.length}'),
+                          ),
+                          Chip(
+                            avatar: const Icon(
+                              Icons.play_circle_outline,
+                              size: 18,
+                            ),
+                            label: I18nText('Active dogs now: $activeDogs'),
+                          ),
+                          Chip(
+                            avatar: const Icon(
+                              Icons.monetization_on_outlined,
+                              size: 18,
+                            ),
+                            label: I18nText(
+                              'Next 30-day renewal: $renewingDogs Doubloons / £${renewalPounds.toStringAsFixed(2)}',
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (widget.profile.canManageAccounts) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (renewingDogs > 0)
+                              OutlinedButton.icon(
+                                onPressed: () =>
+                                    _pauseAllDogs(context, uid: u.id),
+                                icon: const Icon(Icons.pause_circle_outline),
+                                label: const I18nText('PAUSE ALL DOGS'),
+                              ),
+                            if (scheduledPauses > 0)
+                              OutlinedButton.icon(
+                                onPressed: () =>
+                                    _cancelAllPauses(context, uid: u.id),
+                                icon: const Icon(Icons.restart_alt),
+                                label: const I18nText('CANCEL ALL PAUSES'),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ],
                     const Divider(height: 22),
                     Align(
                       alignment: Alignment.centerLeft,
@@ -1708,30 +1922,127 @@ class _DogDirectoryState extends State<DogDirectory> {
                     ),
                     ...dogs.map((d) {
                       final dog = d.data();
-                      final status =
-                          (dog['academyStatus'] ??
-                                  (owner['activated'] == true
-                                      ? 'active'
-                                      : 'awaiting'))
-                              .toString();
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.pets),
-                        title: I18nText((dog['name'] ?? 'Dog').toString()),
-                        subtitle: I18nText(
-                          '${(dog['breed'] ?? '')} • ${status.toUpperCase()}${dog['watchList'] == true ? ' • 👀 WATCH LIST' : ''}',
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => DogSnapshot(
-                              profile: widget.profile,
-                              dogId: d.id,
-                              dog: dog,
-                              ownerId: u.id,
-                              owner: owner,
-                            ),
+                      final status = _dogStatus(dog, owner);
+                      final pauseRequested = dog['pauseRequested'] == true;
+                      final accessUntil = _dateLabel(dog['accessUntil']);
+                      final accountActivated = owner['activated'] == true;
+
+                      final canStart =
+                          accountActivated &&
+                          [
+                            'awaiting',
+                            'paused',
+                            'renewal_due',
+                          ].contains(status);
+
+                      return Card(
+                        margin: const EdgeInsets.only(top: 8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 3),
+                                    child: Icon(Icons.pets),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        I18nText(
+                                          (dog['name'] ?? 'Dog').toString(),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        I18nText(
+                                          '${(dog['breed'] ?? '')} • ${status.toUpperCase()}${dog['watchList'] == true ? ' • 👀 WATCH LIST' : ''}',
+                                        ),
+                                        if (accessUntil.isNotEmpty)
+                                          I18nText(
+                                            'Access until: $accessUntil',
+                                          ),
+                                        if (pauseRequested)
+                                          const I18nText(
+                                            'Pause scheduled at the end of the paid period.',
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (widget.profile.canManageAccounts) ...[
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    if (canStart)
+                                      FilledButton.icon(
+                                        onPressed: () => _authoriseDog(
+                                          context,
+                                          uid: u.id,
+                                          dogId: d.id,
+                                        ),
+                                        icon: const Icon(
+                                          Icons.play_circle_fill,
+                                        ),
+                                        label: I18nText(
+                                          status == 'paused'
+                                              ? 'RESTART 30 DAYS'
+                                              : 'AUTHORISE 30 DAYS',
+                                        ),
+                                      ),
+                                    if (status == 'active' && !pauseRequested)
+                                      OutlinedButton.icon(
+                                        onPressed: () => _pauseDog(
+                                          context,
+                                          uid: u.id,
+                                          dogId: d.id,
+                                        ),
+                                        icon: const Icon(
+                                          Icons.pause_circle_outline,
+                                        ),
+                                        label: const I18nText(
+                                          'PAUSE AT PERIOD END',
+                                        ),
+                                      ),
+                                    if (pauseRequested)
+                                      OutlinedButton.icon(
+                                        onPressed: () => _cancelDogPause(
+                                          context,
+                                          dogId: d.id,
+                                        ),
+                                        icon: const Icon(Icons.restart_alt),
+                                        label: const I18nText('CANCEL PAUSE'),
+                                      ),
+                                    TextButton.icon(
+                                      onPressed: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => DogSnapshot(
+                                            profile: widget.profile,
+                                            dogId: d.id,
+                                            dog: dog,
+                                            ownerId: u.id,
+                                            owner: owner,
+                                          ),
+                                        ),
+                                      ),
+                                      icon: const Icon(Icons.open_in_new),
+                                      label: const I18nText('VIEW DOG'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       );
