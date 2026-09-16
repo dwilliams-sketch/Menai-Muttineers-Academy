@@ -209,6 +209,24 @@ String tr(String input, {String? languageCode}) {
       (m) =>
           'Canllaw arferol: £${m.group(1)} am ${m.group(2)} munud. Bydd eich hyfforddwr yn cadarnhau’r pris a’r hyd gwirioneddol cyn i chi dderbyn.',
     ),
+    MapEntry(
+      RegExp(r'^(\d+) new message(s)? aboard$'),
+      (m) =>
+          '${m.group(1)} new message${m.group(1) == '1' ? '' : 's'} in the bottle',
+    ),
+    MapEntry(
+      RegExp(r'^(.+) • Academy$'),
+      (m) => '${m.group(1)} • Academy Ship',
+    ),
+    MapEntry(
+      RegExp(r'^Last/current paid voyage: (.+)$'),
+      (m) => 'Last/current passage: ${m.group(1)}',
+    ),
+    MapEntry(
+      RegExp(r'^(.+)’s training tools are anchored$'),
+      (m) => '${m.group(1)}’s training gear is below deck',
+    ),
+    MapEntry(RegExp(r'^(.+)’s Photo$'), (m) => '${m.group(1)}’s Portrait'),
   ];
   for (final entry in patterns) {
     final match = entry.key.firstMatch(input);
@@ -470,6 +488,63 @@ const Map<String, String> _pirate = {
   'CAPTAIN': 'CAPTAIN',
   'ADMIN': 'QUARTERMASTER',
   'LEARNER': 'CREWMATE',
+  'The Crew': 'The Crew',
+  'No dog profile found. Please contact the Captain.':
+      'No dog profile found aboard. Send word to the Captain.',
+  'Tap the bell at the top to open your postbox.':
+      'Tap the bell above to open your message bottle.',
+  'Login streak': 'Days Aboard',
+  'Doubloons': 'Doubloons',
+  'More From the Academy': 'More Booty From the Academy',
+  'Training Support': 'Training Help Deck',
+  'Games & Practice': 'Games & Deck Drills',
+  'Follow & Support the Crew': 'Follow & Back the Crew',
+  'Muttineers Treasure Chest': 'Muttineers Treasure Chest',
+  'Profile & Settings': 'Captain’s Log & Settings',
+  'Suggest an Improvement': 'Send Word to the Captain',
+  'Official training tools stay locked while this dog is paused. Restart the adventure or use the 1-to-1 button on the anchored screen.': 'Training gear stays below deck while this dog is anchored. Set sail again or use the 1-to-1 button on the anchored screen.',
+  'Follow the Crew': 'Follow the Crew',
+  'Keep up with the Muttineers and help support the Academy.':
+      'Keep up with the Muttineers and help keep the Academy ship sailing.',
+  'Support the Crew': 'Back the Crew',
+  'Bank Transfer / Standing Order':
+      'Doubloons by Bank Transfer / Standing Order',
+  'Payments happen outside the app. The Academy does not collect your bank or card details.': 'Payments happen ashore. The Academy never stores your bank or card details.',
+  '1 Doubloon (£5) gives one dog 30 days of Academy access.':
+      '1 Doubloon (£5) buys one dog 30 days of Academy passage.',
+  'Your reference:': 'Your treasure reference:',
+  'Reference copied.': 'Treasure reference copied.',
+  'Link coming soon': 'Coming over the horizon',
+  'Profile Photos': 'Crew Portraits',
+  'My Photo': 'My Portrait',
+  'Appearance & Sound': 'Ship Appearance & Sound',
+  'Pirate backgrounds': 'Pirate Scenery',
+  'Light pirate scenes behind the app. Turn off for a plain view.':
+      'Pirate scenery behind the Academy. Turn it off for calmer waters.',
+  'Background style': 'Scenery Style',
+  'Change each visit': 'New Scene Each Voyage',
+  'My favourite': 'My Favourite Port',
+  'Favourite scene': 'Favourite Scene',
+  'Background shanty music': 'Background Sea Shanties',
+  'Loops between Academy tracks. Off by default.':
+      'Plays Academy shanties in the background. Off by default.',
+  'Music volume': 'Shanty Volume',
+  'Trophy celebration sounds': 'Treasure Celebration Sounds',
+  'Reduced animation': 'Calmer Sailing',
+  'Use gentler movement and transitions.':
+      'Use gentler movement and calmer page changes.',
+  'Training timer sound': 'Training Timer Signal',
+  'Crew Privacy': 'Crew Privacy',
+  'Request a 1-to-1': 'Request Private Training',
+  'REQUEST A 1-to-1': 'REQUEST PRIVATE TRAINING',
+  'REQUEST A 1-to-1 SESSION': 'REQUEST PRIVATE TRAINING',
+  'Restart request sent to Admin.':
+      'Restart request sent to the quartermaster.',
+  'Photo upload is currently disabled by Admin. This keeps the Academy on the low-cost setup until cloud photo storage is enabled.': 'Portrait uploads are currently below deck. This keeps the Academy running on the low-cost setup until cloud storage is enabled.',
+  'Photo upload is not available yet. Admin may need to enable Firebase Storage.': 'Portrait upload is not ready yet. The quartermaster may need to enable cloud storage.',
+  'Could not save that setting. Please try again.':
+      'Could not update the ship’s log. Please try again.',
+  '♪ Skip music track': '♪ Skip this shanty',
 };
 
 class I18nText extends StatelessWidget {
