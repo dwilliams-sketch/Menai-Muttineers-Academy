@@ -695,6 +695,36 @@ class FirestoreService {
         'videoArchiveRequestedAt': value ? FieldValue.serverTimestamp() : null,
       });
 
+  Future<void> markSubmissionVideoArchived(
+    String submissionId, {
+    String archiveUrl = '',
+  }) => db.collection('submissions').doc(submissionId).update({
+    'videoArchived': true,
+    'videoArchivedAt': FieldValue.serverTimestamp(),
+    'videoArchiveRequested': false,
+    'videoArchiveRequestedAt': null,
+    'videoArchiveUrl': archiveUrl.trim(),
+    'videoDeleteAfter': null,
+  });
+
+  Future<void> markHelpVideoArchived({
+    required String threadId,
+    required String messageId,
+    String archiveUrl = '',
+  }) => db
+      .collection('lessonHelp')
+      .doc(threadId)
+      .collection('messages')
+      .doc(messageId)
+      .update({
+        'videoArchived': true,
+        'videoArchivedAt': FieldValue.serverTimestamp(),
+        'videoArchiveRequested': false,
+        'videoArchiveRequestedAt': null,
+        'videoArchiveUrl': archiveUrl.trim(),
+        'videoDeleteAfter': null,
+      });
+
   Future<void> reviewSubmission({
     required String submissionId,
     required String dogId,
@@ -721,17 +751,27 @@ class FirestoreService {
     final batch = db.batch();
     final academyUpload =
         (sub['videoSource'] ?? '').toString() == 'academy_upload';
-    final keepVideo =
-        sub['videoArchiveRequested'] == true || sub['videoArchived'] == true;
+    final archiveRequested = sub['videoArchiveRequested'] == true;
+    final archived = sub['videoArchived'] == true;
+
+    Duration? videoRetention;
+
+    if (academyUpload) {
+      if (archived) {
+        videoRetention = const Duration(days: 7);
+      } else if (!archiveRequested) {
+        videoRetention = const Duration(days: 30);
+      }
+    }
 
     batch.update(db.collection('submissions').doc(submissionId), {
       'status': passed ? 'passed' : 'practise',
       'feedback': feedback.trim(),
       'reviewerName': reviewerName,
       'reviewedAt': FieldValue.serverTimestamp(),
-      'videoDeleteAfter': academyUpload && !keepVideo
-          ? Timestamp.fromDate(DateTime.now().add(const Duration(days: 30)))
-          : null,
+      'videoDeleteAfter': videoRetention == null
+          ? null
+          : Timestamp.fromDate(DateTime.now().add(videoRetention)),
     });
     if (passed) {
       final trophy = db
@@ -893,9 +933,6 @@ class FirestoreService {
   Future<void> resolveHelpThread(String threadId) async {
     final ref = db.collection('lessonHelp').doc(threadId);
     final messages = await ref.collection('messages').get();
-    final deleteAfter = Timestamp.fromDate(
-      DateTime.now().add(const Duration(days: 30)),
-    );
 
     final batch = db.batch();
 
@@ -909,19 +946,31 @@ class FirestoreService {
       final data = message.data();
       final academyUpload =
           (data['videoSource'] ?? '').toString() == 'academy_upload';
-      final keepVideo =
-          data['videoArchiveRequested'] == true ||
-          data['videoArchived'] == true;
+      final archiveRequested = data['videoArchiveRequested'] == true;
+      final archived = data['videoArchived'] == true;
 
-      if (academyUpload && !keepVideo) {
-        batch.update(message.reference, {'videoDeleteAfter': deleteAfter});
+      Duration? videoRetention;
+
+      if (academyUpload) {
+        if (archived) {
+          videoRetention = const Duration(days: 7);
+        } else if (!archiveRequested) {
+          videoRetention = const Duration(days: 30);
+        }
+      }
+
+      if (videoRetention != null) {
+        batch.update(message.reference, {
+          'videoDeleteAfter': Timestamp.fromDate(
+            DateTime.now().add(videoRetention),
+          ),
+        });
       }
     }
 
     await batch.commit();
   }
 
-  // Training diary
   Future<void> addTrainingLog({
     required String uid,
     required String dogId,
@@ -1182,7 +1231,8 @@ class FirestoreService {
     await notifyUser(
       uid: uid,
       title: '⚓ Pause scheduled',
-      body: 'This dog will pause at the end of the current paid access period. You can cancel the pause before then.',
+      body:
+          'This dog will pause at the end of the current paid access period. You can cancel the pause before then.',
       type: 'account',
       targetId: dogId,
     );
@@ -1423,7 +1473,8 @@ class FirestoreService {
       await notifyUser(
         uid: uid,
         title: '✅ Payment confirmed',
-        body: 'Your first Academy access is ready. Enter the activation code sent by the Captain/Admin.',
+        body:
+            'Your first Academy access is ready. Enter the activation code sent by the Captain/Admin.',
         type: 'account',
       );
     }
