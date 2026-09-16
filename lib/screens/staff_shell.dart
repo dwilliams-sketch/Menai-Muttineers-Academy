@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
 import '../i18n.dart';
@@ -28,21 +31,70 @@ class _StaffShellState extends State<StaffShell> {
   String helpFilter = '';
   final service = FirestoreService();
 
+  StreamSubscription<RemoteMessage>? _pushOpenSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _pushOpenSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
+      _openPushMessage,
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final initialMessage = await FirebaseMessaging.instance
+          .getInitialMessage();
+
+      if (initialMessage != null && mounted) {
+        await _openPushMessage(initialMessage);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pushOpenSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _openPushMessage(RemoteMessage message) async {
+    final type = (message.data['type'] ?? '').toString();
+    final targetId = (message.data['targetId'] ?? '').toString();
+
+    if (type.isEmpty) return;
+
+    await _routeStaffTarget(type: type, targetId: targetId);
+  }
+
   Future<void> _openStaffNotification(
     BuildContext notificationContext,
     AcademyNotification notification,
   ) async {
-    if (notification.type == 'staff_help' && notification.targetId.isNotEmpty) {
+    Navigator.of(notificationContext).pop();
+
+    await Future<void>.delayed(Duration.zero);
+
+    if (!mounted) return;
+
+    await _routeStaffTarget(
+      type: notification.type,
+      targetId: notification.targetId,
+    );
+  }
+
+  Future<void> _routeStaffTarget({
+    required String type,
+    required String targetId,
+  }) async {
+    if (type == 'staff_help' && targetId.isNotEmpty) {
       final thread = await service.db
           .collection('lessonHelp')
-          .doc(notification.targetId)
+          .doc(targetId)
           .get();
 
       if (!mounted) return;
 
       if (!thread.exists) {
-        Navigator.of(notificationContext).pop();
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: I18nText('That help conversation could not be found.'),
@@ -56,8 +108,6 @@ class _StaffShellState extends State<StaffShell> {
         taskTab = 1;
         helpFilter = '';
       });
-
-      Navigator.of(notificationContext).pop();
 
       await Future<void>.delayed(Duration.zero);
 
@@ -77,15 +127,14 @@ class _StaffShellState extends State<StaffShell> {
       return;
     }
 
-    final tab = switch (notification.type) {
+    final tab = switch (type) {
       'staff_assessment' => 0,
       'staff_one_to_one' => 2,
       'staff_account' => 3,
       _ => null,
     };
 
-    if (tab != null) {
-      Navigator.of(notificationContext).pop();
+    if (tab != null && mounted) {
       _openTasks(tab, '');
     }
   }
