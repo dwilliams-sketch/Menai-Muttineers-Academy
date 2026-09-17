@@ -634,58 +634,84 @@ class FirestoreService {
     required String dogName,
   }) async {
     final cleanStoragePath = storagePath.trim();
+    final cleanVideoUrl = videoUrl.trim();
 
-    // Academy uploads get a repeat-safe document ID based on the unique
-    // Storage object. If the learner taps/retries after the submission has
-    // already reached Firestore, we return the existing submission instead
-    // of creating a duplicate.
-    final submissionRef = cleanStoragePath.isNotEmpty
-        ? db
-              .collection('submissions')
-              .doc(
-                'video_${sha256.convert(utf8.encode(cleanStoragePath)).toString().substring(0, 24)}',
-              )
-        : db.collection('submissions').doc();
+    // Give every assessment a stable ID so pressing Submit twice cannot create
+    // two records. Academy uploads use their unique Storage path. External
+    // links use learner + dog + module + URL.
+    final submissionKey = cleanStoragePath.isNotEmpty
+        ? 'storage|$cleanStoragePath'
+        : 'link|$uid|$dogId|${module.id}|$cleanVideoUrl';
+
+    final submissionId =
+        'video_${sha256.convert(utf8.encode(submissionKey)).toString().substring(0, 24)}';
+
+    final submissionRef = db.collection('submissions').doc(submissionId);
+
+    final payload = <String, dynamic>{
+      'userId': uid,
+      'dogId': dogId,
+      'learnerName': learnerName,
+      'dogName': dogName,
+      'moduleId': module.id,
+      'moduleTitle': module.title,
+      'trophyTitle': module.trophyTitle,
+      'artKey': module.artKey,
+      'videoUrl': cleanVideoUrl,
+      'storagePath': cleanStoragePath,
+      'videoSource': videoSource,
+      'videoSizeBytes': videoSizeBytes,
+      'videoArchived': false,
+      'videoArchiveRequested': false,
+      'note': note.trim(),
+      'status': 'waiting',
+      'feedback': '',
+      'reviewerName': '',
+      'assignedTo': '',
+      'submittedAt': FieldValue.serverTimestamp(),
+      'reviewedAt': null,
+    };
 
     var created = false;
 
-    await db.runTransaction((tx) async {
-      final existing = await tx.get(submissionRef);
-
-      if (existing.exists) return;
-
-      tx.set(submissionRef, {
-        'userId': uid,
-        'dogId': dogId,
-        'learnerName': learnerName,
-        'dogName': dogName,
-        'moduleId': module.id,
-        'moduleTitle': module.title,
-        'trophyTitle': module.trophyTitle,
-        'artKey': module.artKey,
-        'videoUrl': videoUrl.trim(),
-        'storagePath': cleanStoragePath,
-        'videoSource': videoSource,
-        'videoSizeBytes': videoSizeBytes,
-        'videoArchived': false,
-        'videoArchiveRequested': false,
-        'note': note.trim(),
-        'status': 'waiting',
-        'feedback': '',
-        'reviewerName': '',
-        'assignedTo': '',
-        'submittedAt': FieldValue.serverTimestamp(),
-        'reviewedAt': null,
-      });
-
+    try {
+      // IMPORTANT:
+      // Do not read this document before creating it. Firestore correctly
+      // prevents a learner reading a submission that does not exist yet.
+      await submissionRef.set(payload);
       created = true;
-    });
+    } catch (originalError) {
+      // If this exact assessment was already created by an earlier tap/retry,
+      // the second SET is an update and learner rules reject it. Now that the
+      // record exists, the learner is allowed to read their own submission.
+      try {
+        final existing = await submissionRef.get();
+        final data = existing.data();
 
-    // A retry of the same uploaded video is already safely submitted.
+        final sameOwner =
+            existing.exists &&
+            (data?['userId'] ?? '').toString() == uid &&
+            (data?['dogId'] ?? '').toString() == dogId &&
+            (data?['moduleId'] ?? '').toString() == module.id;
+
+        final sameVideo = cleanStoragePath.isNotEmpty
+            ? (data?['storagePath'] ?? '').toString() == cleanStoragePath
+            : (data?['videoUrl'] ?? '').toString() == cleanVideoUrl;
+
+        if (sameOwner && sameVideo) {
+          // Already safely submitted. Treat the retry as success.
+          return;
+        }
+      } catch (_) {
+        // Preserve the original write failure below.
+      }
+
+      throw originalError;
+    }
+
     if (!created) return;
 
-    // These are useful extras, but failure here must never make the learner
-    // think their successfully-saved assessment failed.
+    // Useful extras must never make a successful assessment look failed.
     try {
       await _ensureAutomaticTrophy(
         dogId: dogId,
@@ -1321,7 +1347,8 @@ class FirestoreService {
     await notifyUser(
       uid: uid,
       title: '⚓ Pause scheduled',
-      body: 'This dog will pause at the end of the current paid access period. You can cancel the pause before then.',
+      body:
+          'This dog will pause at the end of the current paid access period. You can cancel the pause before then.',
       type: 'account',
       targetId: dogId,
     );
@@ -1522,6 +1549,7 @@ class FirestoreService {
     String? code;
     var initialPayment = false;
     var creditAdded = 0.0;
+    var confirmedAmount = 0.0;
 
     await db.runTransaction((tx) async {
       final payment = await tx.get(paymentRef);
@@ -1532,6 +1560,27 @@ class FirestoreService {
 
       if ((payment.data()?['status'] ?? '').toString() != 'waiting') {
         throw StateError('This payment has already been confirmed.');
+      }
+
+      final paymentData = payment.data() ?? {};
+      final paymentUid = (paymentData['userId'] ?? '').toString();
+
+      confirmedAmount = (paymentData['amount'] as num?)?.toDouble() ?? 0.0;
+
+      if (paymentUid != uid) {
+        throw StateError(
+          'This payment request does not belong to this learner.',
+        );
+      }
+
+      if (confirmedAmount <= 0) {
+        throw StateError('This payment request has an invalid amount.');
+      }
+
+      if ((amount - confirmedAmount).abs() > 0.0001) {
+        throw StateError(
+          'The payment amount has changed. Re-open this payment check and try again.',
+        );
       }
 
       final user = await tx.get(userRef);
@@ -1549,7 +1598,7 @@ class FirestoreService {
             'complimentary',
           ].contains((data['paymentStatus'] ?? 'unpaid').toString());
 
-      if (initialPayment && amount + 0.0001 < academyDoubloonPounds) {
+      if (initialPayment && confirmedAmount + 0.0001 < academyDoubloonPounds) {
         throw StateError(
           'The first payment must cover at least £${academyDoubloonPounds.toStringAsFixed(2)}.',
         );
@@ -1564,9 +1613,9 @@ class FirestoreService {
           'accessCodeHash': hashAccessCode(code!),
         });
 
-        creditAdded = max(0.0, amount - academyDoubloonPounds);
+        creditAdded = max(0.0, confirmedAmount - academyDoubloonPounds);
       } else {
-        creditAdded = amount;
+        creditAdded = confirmedAmount;
       }
 
       if (creditAdded > 0) {
@@ -1598,7 +1647,8 @@ class FirestoreService {
         await notifyUser(
           uid: uid,
           title: '✅ Payment confirmed',
-          body: 'Your first Academy access is ready. Enter the activation code sent by the Captain/Admin.',
+          body:
+              'Your first Academy access is ready. Enter the activation code sent by the Captain/Admin.',
           type: 'account',
         );
       } else if (creditAdded > 0) {
@@ -1618,7 +1668,7 @@ class FirestoreService {
       await _audit(
         'Payment confirmed',
         uid,
-        '£${amount.toStringAsFixed(2)}',
+        '£${confirmedAmount.toStringAsFixed(2)}',
         actor,
       );
     } catch (_) {}

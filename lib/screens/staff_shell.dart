@@ -4324,14 +4324,12 @@ class _VideoStoragePanelState extends State<VideoStoragePanel> {
 
       if (mounted) {
         setState(() {
-          storageError = error.toString();
+          storageError = 'Storage refresh failed. Please try again.';
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: I18nText(
-              'Storage refresh failed. Technical details are shown below.',
-            ),
+            content: I18nText('Storage refresh failed. Please try again.'),
           ),
         );
       }
@@ -4364,6 +4362,43 @@ class _VideoStoragePanelState extends State<VideoStoragePanel> {
         '${two(date.hour)}:${two(date.minute)}';
   }
 
+  Future<void> _openVideoBrowser({
+    required String title,
+    required String filter,
+  }) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _VideoStorageBrowser(
+          title: title,
+          filter: filter,
+          functions: functions,
+          onChanged: _refresh,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showDeletedInfo(int count) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const I18nText('Deleted last cleanup'),
+        content: I18nText(
+          count == 1
+              ? '1 video was deleted during the last automatic cleanup. Deleted videos can no longer be opened.'
+              : '$count videos were deleted during the last automatic cleanup. Deleted videos can no longer be opened.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const I18nText('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => ExpansionTile(
     leading: const Icon(Icons.video_library),
@@ -4377,7 +4412,7 @@ class _VideoStoragePanelState extends State<VideoStoragePanel> {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: SelectableText('Storage refresh error:\n$storageError'),
+            child: I18nText(storageError),
           ),
         ),
 
@@ -4432,41 +4467,68 @@ class _VideoStoragePanelState extends State<VideoStoragePanel> {
                     icon: Icons.video_file,
                     label: 'Videos stored',
                     value: '${data['fileCount'] ?? 0}',
+                    onTap: () => _openVideoBrowser(
+                      title: 'Videos stored',
+                      filter: 'all',
+                    ),
                   ),
                   _VideoStorageMetric(
                     icon: Icons.cloud,
                     label: 'Storage used',
                     value: _storageText(data),
+                    onTap: () =>
+                        _openVideoBrowser(title: 'Storage used', filter: 'all'),
                   ),
                   _VideoStorageMetric(
                     icon: Icons.hourglass_bottom,
                     label: 'Temporary videos',
                     value: '${data['temporaryVideos'] ?? 0}',
+                    onTap: () => _openVideoBrowser(
+                      title: 'Temporary videos',
+                      filter: 'temporary',
+                    ),
                   ),
                   _VideoStorageMetric(
                     icon: Icons.delete_sweep,
                     label: 'Awaiting deletion',
                     value: '${data['awaitingDeletion'] ?? 0}',
+                    onTap: () => _openVideoBrowser(
+                      title: 'Awaiting deletion',
+                      filter: 'awaitingDeletion',
+                    ),
                   ),
                   _VideoStorageMetric(
                     icon: Icons.bookmark,
                     label: 'Marked to keep',
                     value: '${data['markedToKeep'] ?? 0}',
+                    onTap: () => _openVideoBrowser(
+                      title: 'Marked to keep',
+                      filter: 'markedToKeep',
+                    ),
                   ),
                   _VideoStorageMetric(
                     icon: Icons.fact_check,
                     label: 'Waiting assessments',
                     value: '${data['waitingAssessmentVideos'] ?? 0}',
+                    onTap: () => _openVideoBrowser(
+                      title: 'Waiting assessments',
+                      filter: 'waitingAssessment',
+                    ),
                   ),
                   _VideoStorageMetric(
                     icon: Icons.archive,
                     label: 'Safely archived',
                     value: '${data['archivedToDrive'] ?? 0}',
+                    onTap: () => _openVideoBrowser(
+                      title: 'Safely archived',
+                      filter: 'archived',
+                    ),
                   ),
                   _VideoStorageMetric(
                     icon: Icons.cleaning_services,
                     label: 'Deleted last cleanup',
                     value: '$deletedLastRun',
+                    onTap: () => _showDeletedInfo(deletedLastRun),
                   ),
                 ],
               ),
@@ -4528,30 +4590,354 @@ class _VideoStorageMetric extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
   const _VideoStorageMetric({
     required this.icon,
     required this.label,
     required this.value,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) => SizedBox(
     width: 170,
     child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon),
-            const SizedBox(height: 8),
-            Text(value, style: Theme.of(context).textTheme.headlineSmall),
-            I18nText(label),
-          ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(icon),
+                    const SizedBox(height: 8),
+                    Text(
+                      value,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    I18nText(label),
+                  ],
+                ),
+              ),
+              if (onTap != null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Icon(Icons.chevron_right, size: 18),
+                ),
+            ],
+          ),
         ),
       ),
     ),
+  );
+}
+
+class _VideoStorageBrowser extends StatefulWidget {
+  final String title;
+  final String filter;
+  final AdminFunctionsService functions;
+  final Future<void> Function() onChanged;
+
+  const _VideoStorageBrowser({
+    required this.title,
+    required this.filter,
+    required this.functions,
+    required this.onChanged,
+  });
+
+  @override
+  State<_VideoStorageBrowser> createState() => _VideoStorageBrowserState();
+}
+
+class _VideoStorageBrowserState extends State<_VideoStorageBrowser> {
+  bool loading = true;
+  String error = '';
+  List<Map<String, dynamic>> videos = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (mounted) {
+      setState(() {
+        loading = true;
+        error = '';
+      });
+    }
+
+    try {
+      final all = await widget.functions.listAcademyStoredVideos();
+
+      final filtered = all.where((video) {
+        switch (widget.filter) {
+          case 'temporary':
+            return video['temporary'] == true;
+          case 'awaitingDeletion':
+            return video['awaitingDeletion'] == true;
+          case 'markedToKeep':
+            return video['markedToKeep'] == true;
+          case 'waitingAssessment':
+            return video['waitingAssessment'] == true;
+          case 'archived':
+            return video['archived'] == true;
+          default:
+            return true;
+        }
+      }).toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        videos = filtered;
+        loading = false;
+      });
+    } catch (e) {
+      debugPrint('Could not load Academy stored videos: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        error = 'The video list could not be loaded. Please try again.';
+        loading = false;
+      });
+    }
+  }
+
+  String _size(dynamic value) {
+    final bytes = (value as num?)?.toInt() ?? 0;
+
+    if (bytes >= 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+    }
+
+    if (bytes >= 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+
+    if (bytes >= 1024) {
+      return '${(bytes / 1024).toStringAsFixed(0)} KB';
+    }
+
+    return '$bytes bytes';
+  }
+
+  String _title(Map<String, dynamic> video) {
+    final dog = (video['dogName'] ?? '').toString().trim();
+    final module = (video['moduleTitle'] ?? '').toString().trim();
+    final owner = (video['ownerName'] ?? '').toString().trim();
+
+    if (dog.isNotEmpty && module.isNotEmpty) {
+      return '$dog — $module';
+    }
+
+    if (dog.isNotEmpty) return dog;
+    if (owner.isNotEmpty) return owner;
+
+    return (video['originalName'] ?? 'Academy video').toString();
+  }
+
+  Future<void> _delete(Map<String, dynamic> video) async {
+    final path = (video['storagePath'] ?? '').toString();
+
+    if (path.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const I18nText('Delete this video permanently?'),
+        content: const I18nText(
+          'This removes the actual video from Academy Storage. The assessment or Help record will remain, but the video itself cannot be recovered.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const I18nText('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.delete_forever),
+            label: const I18nText('DELETE VIDEO NOW'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await widget.functions.deleteAcademyStoredVideo(storagePath: path);
+
+      await _load();
+      await widget.onChanged();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: I18nText(
+              'Video permanently deleted from Academy Storage.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Manual Academy video deletion failed: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: I18nText(
+              'The video could not be deleted. Please try again.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: I18nText(widget.title),
+      actions: [
+        IconButton(
+          onPressed: loading ? null : _load,
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Refresh',
+        ),
+      ],
+    ),
+    body: loading
+        ? const Center(child: CircularProgressIndicator())
+        : error.isNotEmpty
+        ? Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: I18nText(error, textAlign: TextAlign.center),
+            ),
+          )
+        : videos.isEmpty
+        ? const Center(child: I18nText('No videos in this category.'))
+        : ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: videos.length,
+            itemBuilder: (context, index) {
+              final video = videos[index];
+              final path = (video['storagePath'] ?? '').toString();
+              final owner = (video['ownerName'] ?? '').toString();
+              final type = (video['recordType'] ?? '').toString();
+              final unlinked = video['unlinked'] == true;
+
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.video_file),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _title(video),
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                if (owner.isNotEmpty) Text(owner),
+                                I18nText(
+                                  '${_size(video['sizeBytes'])} • '
+                                  '${type.isEmpty ? 'video' : type}',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      if (unlinked)
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Chip(
+                            avatar: Icon(Icons.link_off, size: 18),
+                            label: I18nText('Unlinked upload'),
+                          ),
+                        ),
+
+                      if (video['temporary'] == true)
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Chip(
+                            avatar: Icon(Icons.hourglass_bottom, size: 18),
+                            label: I18nText('Temporary video'),
+                          ),
+                        ),
+
+                      if (video['markedToKeep'] == true)
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Chip(
+                            avatar: Icon(Icons.bookmark, size: 18),
+                            label: I18nText('Marked to keep'),
+                          ),
+                        ),
+
+                      if (video['awaitingDeletion'] == true)
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Chip(
+                            avatar: Icon(Icons.delete_sweep, size: 18),
+                            label: I18nText('Awaiting deletion'),
+                          ),
+                        ),
+
+                      const SizedBox(height: 8),
+
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.tonalIcon(
+                            onPressed: path.isEmpty
+                                ? null
+                                : () => _watchAcademyVideo(
+                                    context,
+                                    url: '',
+                                    storagePath: path,
+                                    title: _title(video),
+                                  ),
+                            icon: const Icon(Icons.play_circle),
+                            label: const I18nText('WATCH VIDEO'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: path.isEmpty
+                                ? null
+                                : () => _delete(video),
+                            icon: const Icon(Icons.delete_forever),
+                            label: const I18nText('DELETE VIDEO NOW'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
   );
 }
 

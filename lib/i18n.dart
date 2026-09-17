@@ -643,6 +643,23 @@ class I18nText extends StatelessWidget {
 }
 
 const Map<String, String> _cy = {
+  'WATCH VIDEO': 'GWYLIO FIDEO',
+  'The video list could not be loaded. Please try again.':
+      'Ni ellid llwytho’r rhestr fideos. Rhowch gynnig arall arni.',
+  'No videos in this category.': 'Dim fideos yn y categori hwn.',
+  'Unlinked upload': 'Uwchlwythiad heb gysylltiad',
+  'Temporary video': 'Fideo dros dro',
+  'Delete this video permanently?': 'Dileu’r fideo hwn yn barhaol?',
+  'This removes the actual video from Academy Storage. The assessment or Help record will remain, but the video itself cannot be recovered.':
+      'Mae hyn yn dileu’r fideo ei hun o Storfa’r Academi. Bydd y cofnod asesiad neu Gymorth yn aros, ond ni ellir adfer y fideo.',
+  'Video permanently deleted from Academy Storage.':
+      'Fideo wedi’i ddileu’n barhaol o Storfa’r Academi.',
+  'The video could not be deleted. Please try again.':
+      'Ni ellid dileu’r fideo. Rhowch gynnig arall arni.',
+  '1 video was deleted during the last automatic cleanup. Deleted videos can no longer be opened.':
+      'Cafodd 1 fideo ei ddileu yn ystod y glanhau awtomatig diwethaf. Ni ellir agor fideos sydd wedi’u dileu.',
+  'Storage refresh failed. Please try again.':
+      'Methodd adnewyddu’r storfa. Rhowch gynnig arall arni.',
   '✅ Assessment sent to the trainers.':
       '✅ Asesiad wedi’i anfon at yr hyfforddwyr.',
   'Assessment could not be completed. Your video is still here — please try again.':

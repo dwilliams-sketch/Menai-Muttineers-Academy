@@ -564,6 +564,287 @@ exports.deleteAcademyAccount = onCall(async (request) => {
 
 
 
+
+async function requireAcademyStorageAdmin(request) {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in first.');
+  }
+
+  const caller = await db
+    .collection('users')
+    .doc(request.auth.uid)
+    .get();
+
+  const role = String(caller.data()?.role || '');
+
+  if (!['admin', 'captain'].includes(role)) {
+    throw new HttpsError(
+      'permission-denied',
+      'Admin/Captain access required.',
+    );
+  }
+
+  return {
+    uid: request.auth.uid,
+    role,
+    name: String(caller.data()?.name || role),
+  };
+}
+
+exports.listAcademyStoredVideos = onCall(async (request) => {
+  await requireAcademyStorageAdmin(request);
+
+  const [files] = await bucket.getFiles({
+    prefix: 'academyVideos/',
+  });
+
+  const submissions = await db.collection('submissions').get();
+  const helpThreads = await db.collection('lessonHelp').get();
+  const helpMessages = await db.collectionGroup('messages').get();
+
+  const threadData = new Map(
+    helpThreads.docs.map((doc) => [doc.id, doc.data()]),
+  );
+
+  const linked = new Map();
+
+  for (const doc of submissions.docs) {
+    const data = doc.data();
+    const path = String(data.storagePath || '');
+
+    if (!path.startsWith('academyVideos/')) continue;
+
+    linked.set(path, {
+      recordType: 'assessment',
+      recordId: doc.id,
+      learnerName: String(data.learnerName || ''),
+      dogName: String(data.dogName || ''),
+      moduleTitle: String(data.moduleTitle || ''),
+      lessonTitle: '',
+      status: String(data.status || ''),
+      temporary:
+        String(data.videoSource || '') === 'academy_upload' &&
+        data.videoArchiveRequested !== true &&
+        data.videoArchived !== true,
+      awaitingDeletion: data.videoDeleteAfter != null,
+      markedToKeep:
+        data.videoArchiveRequested === true &&
+        data.videoArchived !== true,
+      archived: data.videoArchived === true,
+      waitingAssessment: String(data.status || '') === 'waiting',
+      deleteAfter:
+        data.videoDeleteAfter?.toDate?.()?.toISOString?.() || '',
+    });
+  }
+
+  for (const doc of helpMessages.docs) {
+    const data = doc.data();
+    const path = String(data.storagePath || '');
+
+    if (!path.startsWith('academyVideos/')) continue;
+
+    const threadId = doc.ref.parent.parent?.id || '';
+    const thread = threadData.get(threadId) || {};
+
+    linked.set(path, {
+      recordType: 'help',
+      recordId: doc.id,
+      threadId,
+      learnerName: String(
+        thread.learnerName || data.senderName || '',
+      ),
+      dogName: String(thread.dogName || ''),
+      moduleTitle: String(thread.moduleTitle || ''),
+      lessonTitle: String(thread.lessonTitle || ''),
+      status: String(thread.status || ''),
+      temporary:
+        String(data.videoSource || '') === 'academy_upload' &&
+        data.videoArchiveRequested !== true &&
+        data.videoArchived !== true,
+      awaitingDeletion: data.videoDeleteAfter != null,
+      markedToKeep:
+        data.videoArchiveRequested === true &&
+        data.videoArchived !== true,
+      archived: data.videoArchived === true,
+      waitingAssessment: false,
+      deleteAfter:
+        data.videoDeleteAfter?.toDate?.()?.toISOString?.() || '',
+    });
+  }
+
+  const ownerUids = [
+    ...new Set(
+      files
+        .map((file) => {
+          const custom = file.metadata?.metadata || {};
+          return String(
+            custom.ownerUid || file.name.split('/')[1] || '',
+          );
+        })
+        .filter(Boolean),
+    ),
+  ];
+
+  const ownerNames = new Map();
+
+  if (ownerUids.length) {
+    const userSnaps = await db.getAll(
+      ...ownerUids.map((uid) => db.collection('users').doc(uid)),
+    );
+
+    for (const snap of userSnaps) {
+      if (snap.exists) {
+        ownerNames.set(
+          snap.id,
+          String(snap.data()?.name || ''),
+        );
+      }
+    }
+  }
+
+  const videos = files.map((file) => {
+    const metadata = file.metadata || {};
+    const custom = metadata.metadata || {};
+    const path = file.name;
+    const parts = path.split('/');
+    const ownerUid = String(custom.ownerUid || parts[1] || '');
+    const match = linked.get(path);
+
+    return {
+      storagePath: path,
+      ownerUid,
+      ownerName:
+        ownerNames.get(ownerUid) ||
+        match?.learnerName ||
+        '',
+      videoType: String(custom.videoType || parts[2] || ''),
+      originalName: String(
+        custom.originalName ||
+        parts[parts.length - 1] ||
+        'video',
+      ),
+      sizeBytes: Number(metadata.size || 0),
+      contentType: String(metadata.contentType || ''),
+      createdAt: String(metadata.timeCreated || ''),
+      updatedAt: String(metadata.updated || ''),
+      recordType: match?.recordType || 'unlinked',
+      recordId: match?.recordId || '',
+      threadId: match?.threadId || '',
+      learnerName: match?.learnerName || '',
+      dogName: match?.dogName || '',
+      moduleTitle: match?.moduleTitle || '',
+      lessonTitle: match?.lessonTitle || '',
+      status: match?.status || '',
+      temporary: match?.temporary === true,
+      awaitingDeletion: match?.awaitingDeletion === true,
+      markedToKeep: match?.markedToKeep === true,
+      archived: match?.archived === true,
+      waitingAssessment: match?.waitingAssessment === true,
+      deleteAfter: match?.deleteAfter || '',
+      unlinked: !match,
+    };
+  });
+
+  videos.sort(
+    (a, b) => Number(b.sizeBytes || 0) - Number(a.sizeBytes || 0),
+  );
+
+  return {
+    videos,
+    count: videos.length,
+  };
+});
+
+exports.deleteAcademyStoredVideo = onCall(async (request) => {
+  const caller = await requireAcademyStorageAdmin(request);
+
+  const storagePath = String(
+    request.data?.storagePath || '',
+  ).trim();
+
+  if (!storagePath.startsWith('academyVideos/')) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Invalid Academy video path.',
+    );
+  }
+
+  await bucket
+    .file(storagePath)
+    .delete({ignoreNotFound: true});
+
+  let clearedReferences = 0;
+
+  const submissions = await db.collection('submissions').get();
+
+  for (const doc of submissions.docs) {
+    const data = doc.data();
+
+    if (String(data.storagePath || '') !== storagePath) continue;
+
+    const archived = data.videoArchived === true;
+
+    await doc.ref.update({
+      videoUrl: '',
+      storagePath: '',
+      videoSource: archived ? 'archived' : 'deleted',
+      videoSizeBytes: 0,
+      videoDeletedAt: FieldValue.serverTimestamp(),
+      videoDeleteAfter: null,
+      videoArchiveRequested: false,
+      videoArchiveRequestedAt: null,
+    });
+
+    clearedReferences += 1;
+  }
+
+  const helpMessages = await db.collectionGroup('messages').get();
+
+  for (const doc of helpMessages.docs) {
+    const data = doc.data();
+
+    if (String(data.storagePath || '') !== storagePath) continue;
+
+    const archived = data.videoArchived === true;
+
+    await doc.ref.update({
+      videoUrl: '',
+      storagePath: '',
+      videoSource: archived ? 'archived' : 'deleted',
+      videoSizeBytes: 0,
+      videoDeletedAt: FieldValue.serverTimestamp(),
+      videoDeleteAfter: null,
+      videoArchiveRequested: false,
+      videoArchiveRequestedAt: null,
+    });
+
+    clearedReferences += 1;
+  }
+
+  await db.collection('auditLog').add({
+    action: 'Academy video manually deleted',
+    targetId: storagePath,
+    detail:
+      'Storage copy removed manually; $clearedReferences linked record(s) cleared.',
+    actor: caller.name,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+
+  try {
+    await updateVideoStorageStats();
+  } catch (err) {
+    console.error(
+      'Storage stats refresh after manual deletion failed',
+      err,
+    );
+  }
+
+  return {
+    ok: true,
+    clearedReferences,
+  };
+});
+
 exports.refreshVideoStorageStats = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in first.');
