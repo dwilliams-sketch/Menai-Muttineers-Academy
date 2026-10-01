@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:record/record.dart' as rec;
 
 import '../i18n.dart';
 
@@ -6432,177 +6436,185 @@ class _CaptainLogPanelState extends State<CaptainLogPanel> {
   final service = FirestoreService();
   final functions = AdminFunctionsService();
   final c = TextEditingController();
-  final stt.SpeechToText _captainSpeech = stt.SpeechToText();
+  final rec.AudioRecorder _captainRecorder = rec.AudioRecorder();
+
+  StreamSubscription<Uint8List>? _captainAudioSubscription;
+  BytesBuilder _captainAudio = BytesBuilder(copy: false);
+  Timer? _captainTimer;
 
   bool showDone = false;
   bool _voiceListening = false;
   bool _voiceBusy = false;
+  int _voiceSeconds = 0;
   String _voiceTranscript = '';
   String _voiceMessage = '';
 
   @override
   void dispose() {
-    _captainSpeech.cancel();
+    _captainTimer?.cancel();
+    _captainAudioSubscription?.cancel();
+    _captainRecorder.dispose();
     c.dispose();
     super.dispose();
   }
 
+  String get _voiceClock {
+    final minutes = (_voiceSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (_voiceSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
   Future<void> _startCaptainVoice() async {
-    if (_voiceBusy) return;
+    if (_voiceBusy || _voiceListening) return;
+
+    if (kIsWeb) {
+      setState(() {
+        _voiceMessage =
+            'Direct Welsh / Wenglish audio testing is currently available in the Android app.';
+      });
+      return;
+    }
 
     try {
-      final available = await _captainSpeech.initialize(
-        onStatus: (status) {
-          if (!mounted) return;
+      final permitted = await _captainRecorder.hasPermission();
 
-          if (status == 'notListening' || status == 'done') {
-            setState(() {
-              _voiceListening = false;
+      if (!permitted) {
+        if (!mounted) return;
 
-              if (_voiceTranscript.trim().isNotEmpty) {
-                _voiceMessage = 'Speech captured — tap CREATE ENGLISH SUMMARY.';
-              }
-            });
-          }
+        setState(() {
+          _voiceMessage =
+              'Microphone permission is needed to record a Captain’s Log voice note.';
+        });
+        return;
+      }
+
+      final supported = await _captainRecorder.isEncoderSupported(
+        rec.AudioEncoder.aacLc,
+      );
+
+      if (!supported) {
+        if (!mounted) return;
+
+        setState(() {
+          _voiceMessage =
+              'AAC voice recording is not available on this device.';
+        });
+        return;
+      }
+
+      await _captainAudioSubscription?.cancel();
+
+      _captainAudio = BytesBuilder(copy: false);
+      _voiceTranscript = '';
+      _voiceSeconds = 0;
+
+      final stream = await _captainRecorder.startStream(
+        const rec.RecordConfig(
+          encoder: rec.AudioEncoder.aacLc,
+          bitRate: 64000,
+          sampleRate: 16000,
+          numChannels: 1,
+          autoGain: true,
+          noiseSuppress: true,
+        ),
+      );
+
+      _captainAudioSubscription = stream.listen(
+        (chunk) {
+          _captainAudio.add(chunk);
         },
-        onError: (error) {
+        onError: (Object error) {
           if (!mounted) return;
 
           setState(() {
             _voiceListening = false;
-            _voiceMessage = 'Speech recognition: ${error.errorMsg}';
+            _voiceMessage = 'Voice recording error: $error';
           });
         },
       );
-
-      if (!available) {
-        if (!mounted) return;
-
-        setState(() {
-          _voiceMessage = 'Speech recognition is not available on this device.';
-        });
-
-        return;
-      }
-
-      final locales = await _captainSpeech.locales();
-      stt.LocaleName? welshLocale;
-
-      for (final locale in locales) {
-        final id = locale.localeId.toLowerCase().replaceAll('_', '-');
-
-        if (id == 'cy-gb' || id.startsWith('cy-')) {
-          welshLocale = locale;
-          break;
-        }
-      }
 
       if (!mounted) return;
 
       setState(() {
-        _voiceTranscript = '';
         _voiceListening = true;
-        _voiceMessage = welshLocale == null
-            ? 'Listening — Welsh was not listed on this device, so the system language will be used.'
-            : 'Listening in Welsh / Wenglish…';
+        _voiceMessage =
+            'Recording your actual voice — speak naturally in Welsh / Wenglish.';
       });
 
-      await _captainSpeech.listen(
-        onResult: (result) {
-          if (!mounted) return;
+      _captainTimer?.cancel();
 
-          setState(() {
-            _voiceTranscript = result.recognizedWords.trim();
+      _captainTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted || !_voiceListening) {
+          timer.cancel();
+          return;
+        }
 
-            if (result.finalResult && _voiceTranscript.isNotEmpty) {
-              _voiceMessage = 'Speech captured — tap CREATE ENGLISH SUMMARY.';
-            }
-          });
-        },
-        listenOptions: stt.SpeechListenOptions(
-          localeId: welshLocale?.localeId,
-          listenFor: const Duration(seconds: 90),
-          pauseFor: const Duration(seconds: 8),
-          listenMode: stt.ListenMode.dictation,
-          partialResults: true,
-          cancelOnError: false,
-          autoPunctuation: true,
-          contextualPhrases: const [
-            'Menai Muttineers',
-            'flyball',
-            'box turn',
-            'rolling start',
-            'false start',
-            'crossing',
-            'ring party',
-            'foundation',
-            'pairs',
-            'singles',
-            'Chip',
-            'Arlo',
-            'Izzie',
-            'Maggie',
-            'Snow',
-            'Olaf',
-            'Rizzo',
-            'Macs',
-            'Nellie',
-            'Milo',
-            'Cheddar',
-            'Coco',
-            'Ember',
-          ],
-        ),
-      );
+        setState(() {
+          _voiceSeconds += 1;
+        });
+
+        if (_voiceSeconds >= 60) {
+          timer.cancel();
+          _stopCaptainVoice();
+        }
+      });
     } catch (error) {
       if (!mounted) return;
 
       setState(() {
         _voiceListening = false;
-        _voiceMessage = 'Could not start voice recognition: $error';
+        _voiceMessage = 'Could not start voice recording: $error';
       });
     }
   }
 
   Future<void> _stopCaptainVoice() async {
-    if (_captainSpeech.isListening) {
-      await _captainSpeech.stop();
-    }
+    if (!_voiceListening || _voiceBusy) return;
 
-    if (!mounted) return;
+    _captainTimer?.cancel();
 
     setState(() {
       _voiceListening = false;
-
-      if (_voiceTranscript.trim().isNotEmpty) {
-        _voiceMessage = 'Speech captured — creating English summary…';
-      }
-    });
-
-    await _summariseCaptainVoice();
-  }
-
-  Future<void> _summariseCaptainVoice() async {
-    final transcript = _voiceTranscript.trim();
-
-    if (transcript.isEmpty || _voiceBusy) return;
-
-    setState(() {
       _voiceBusy = true;
-      _voiceMessage = 'Creating English Captain’s Log summary…';
+      _voiceMessage =
+          'Listening to your Welsh / Wenglish and creating the English summary…';
     });
 
     try {
-      final summary = await functions.summariseCaptainVoiceTranscript(
-        transcript: transcript,
+      await _captainRecorder.stop();
+
+      // Give the final AAC frames a moment to reach the stream listener
+      // before closing our subscription.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      await _captainAudioSubscription?.cancel();
+      _captainAudioSubscription = null;
+
+      final audioBytes = _captainAudio.takeBytes();
+
+      if (audioBytes.isEmpty) {
+        throw Exception('No audio was recorded.');
+      }
+
+      final result = await functions.summariseCaptainVoiceAudio(
+        audioBase64: base64Encode(audioBytes),
+        mimeType: 'audio/aac',
       );
 
       if (!mounted) return;
+
+      final transcript = result['transcript']?.trim() ?? '';
+      final summary = result['summary']?.trim() ?? '';
+
+      if (summary.isEmpty) {
+        throw Exception('No summary was returned.');
+      }
 
       c.text = summary;
       c.selection = TextSelection.collapsed(offset: c.text.length);
 
       setState(() {
+        _voiceTranscript = transcript;
         _voiceMessage =
             'Summary ready — edit it if needed, then tap + to save it.';
       });
@@ -6611,24 +6623,36 @@ class _CaptainLogPanelState extends State<CaptainLogPanel> {
 
       setState(() {
         _voiceMessage =
-            'Could not create the English summary. Your recognised text is still here.';
+            'I could not understand that voice note well enough. Please try recording it again.';
       });
     } finally {
+      _captainAudio = BytesBuilder(copy: false);
+
       if (mounted) {
-        setState(() => _voiceBusy = false);
+        setState(() {
+          _voiceBusy = false;
+        });
       }
     }
   }
 
   Future<void> _clearCaptainVoice() async {
-    if (_captainSpeech.isListening) {
-      await _captainSpeech.cancel();
+    _captainTimer?.cancel();
+
+    if (_voiceListening) {
+      await _captainRecorder.cancel();
     }
+
+    await _captainAudioSubscription?.cancel();
+    _captainAudioSubscription = null;
+    _captainAudio = BytesBuilder(copy: false);
 
     if (!mounted) return;
 
     setState(() {
       _voiceListening = false;
+      _voiceBusy = false;
+      _voiceSeconds = 0;
       _voiceTranscript = '';
       _voiceMessage = '';
     });
@@ -6697,8 +6721,6 @@ class _CaptainLogPanelState extends State<CaptainLogPanel> {
                         ? null
                         : _voiceListening
                         ? _stopCaptainVoice
-                        : _voiceTranscript.trim().isNotEmpty
-                        ? _summariseCaptainVoice
                         : _startCaptainVoice,
                     icon: _voiceBusy
                         ? const SizedBox(
@@ -6706,20 +6728,12 @@ class _CaptainLogPanelState extends State<CaptainLogPanel> {
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Icon(
-                            _voiceListening
-                                ? Icons.stop_circle
-                                : _voiceTranscript.trim().isNotEmpty
-                                ? Icons.auto_awesome
-                                : Icons.mic,
-                          ),
-                    label: Text(
+                        : Icon(_voiceListening ? Icons.stop_circle : Icons.mic),
+                    label: I18nText(
                       _voiceBusy
-                          ? 'CREATING SUMMARY…'
+                          ? 'PROCESSING VOICE…'
                           : _voiceListening
-                          ? 'STOP & CREATE SUMMARY'
-                          : _voiceTranscript.trim().isNotEmpty
-                          ? 'CREATE ENGLISH SUMMARY'
+                          ? 'STOP & PROCESS'
                           : 'WELSH / WENGLISH VOICE NOTE',
                     ),
                   ),
@@ -6734,6 +6748,24 @@ class _CaptainLogPanelState extends State<CaptainLogPanel> {
                 ],
               ],
             ),
+            if (_voiceListening) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.fiber_manual_record, size: 14),
+                  const SizedBox(width: 6),
+                  I18nText(
+                    'Recording',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(width: 4),
+                  I18nText(
+                    '$_voiceClock / 01:00',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ],
             if (_voiceMessage.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(_voiceMessage, style: Theme.of(context).textTheme.bodySmall),

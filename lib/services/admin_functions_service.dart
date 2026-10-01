@@ -49,18 +49,27 @@ class AdminFunctionsService {
     return (data['text'] ?? '').toString();
   }
 
-  Future<String> summariseCaptainVoiceTranscript({
-    required String transcript,
+  Future<Map<String, String>> summariseCaptainVoiceAudio({
+    required String audioBase64,
+    required String mimeType,
   }) async {
-    final clean = transcript.trim();
-    if (clean.isEmpty) return '';
+    if (audioBase64.trim().isEmpty) {
+      return const {'transcript': '', 'summary': ''};
+    }
 
     final callable = functions.httpsCallable('summariseCaptainVoiceTranscript');
 
-    final result = await callable.call(<String, dynamic>{'transcript': clean});
+    final result = await callable.call(<String, dynamic>{
+      'audioBase64': audioBase64,
+      'mimeType': mimeType,
+    });
 
     final data = Map<String, dynamic>.from(result.data as Map);
-    return (data['summary'] ?? '').toString().trim();
+
+    return <String, String>{
+      'transcript': (data['transcript'] ?? '').toString().trim(),
+      'summary': (data['summary'] ?? '').toString().trim(),
+    };
   }
 
   Future<String> translateAcademyText({

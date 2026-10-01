@@ -887,19 +887,59 @@ exports.summariseCaptainVoiceTranscript = onCall(async (request) => {
     );
   }
 
-  const transcript = String(request.data?.transcript || '').trim();
+  const audioBase64 = String(request.data?.audioBase64 || '').trim();
+  const mimeType = String(request.data?.mimeType || 'audio/aac').trim();
 
-  if (!transcript) {
+  if (!audioBase64) {
     throw new HttpsError(
       'invalid-argument',
-      'No speech was recognised.',
+      'No voice recording was supplied.',
     );
   }
 
-  if (transcript.length > 12000) {
+  const allowedMimeTypes = new Set([
+    'audio/aac',
+    'audio/m4a',
+    'audio/mp4',
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/wav',
+    'audio/ogg',
+    'audio/opus',
+    'audio/webm',
+  ]);
+
+  if (!allowedMimeTypes.has(mimeType)) {
     throw new HttpsError(
       'invalid-argument',
-      'Voice note is too long.',
+      'Unsupported voice recording format.',
+    );
+  }
+
+  let audio;
+
+  try {
+    audio = Buffer.from(audioBase64, 'base64');
+  } catch (_) {
+    throw new HttpsError(
+      'invalid-argument',
+      'The voice recording could not be read.',
+    );
+  }
+
+  if (!audio.length) {
+    throw new HttpsError(
+      'invalid-argument',
+      'The voice recording was empty.',
+    );
+  }
+
+  // Much larger than a normal 60-second AAC Captain's Log note,
+  // but still keeps accidental uploads tightly bounded.
+  if (audio.length > 5 * 1024 * 1024) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Voice note is too large. Please keep it under one minute.',
     );
   }
 
@@ -916,61 +956,103 @@ exports.summariseCaptainVoiceTranscript = onCall(async (request) => {
   });
 
   const prompt = `
-You are preparing a private Captain's Log note for Menai Muttineers Flyball Club.
+Listen carefully to this voice note.
 
-The input is ROUGH automatic speech recognition from a person speaking natural
-Anglesey Welsh. Their speech commonly code-switches between Welsh and English.
-English words inside Welsh sentences are NORMAL and must be interpreted by
-meaning, not treated as mistakes.
+The speaker is from Anglesey / Ynys Môn in North Wales and speaks natural
+local Welsh with frequent English code-switching ("Wenglish").
 
-Examples of perfectly normal mixed vocabulary include:
-doctor, aeroplane, training, box, box turn, jump, jumps, lane, lights,
-pairs, singles, foundation, open, rolling start, false start, crossing,
-ring party, early, late, clean run and flyball.
+Do NOT assume the speech is formal written Welsh.
 
-Likely Menai Muttineers dog names include:
-Chip, Gemma, Bree, Arlo, Izzie, Maggie, Snow, Olaf, Rizzo, Macs, Nellie,
-Echo, Milo, Cheddar, Cali, Bryn, Bear, Coco and Ember.
+English words mixed into Welsh sentences are completely normal and should
+be understood as part of the sentence. Examples may include words such as:
+training, box, jump, pairs, singles, release, early, late, doctor,
+aeroplane, system, test, loading shovel, lights and ring party.
 
-Instructions:
-- Understand the meaning of the Welsh/Wenglish transcript.
-- Produce a SHORT, natural English Captain's Log summary.
-- Usually use 1 to 4 sentences.
-- Preserve names, numbers, dates, actions, training observations and follow-ups.
-- Do not invent information that was not said.
-- Do not add coaching advice unless the speaker actually suggested it.
-- If part of the transcript is uncertain, preserve only what can reasonably
-  be understood rather than making something up.
-- Do not explain the translation process.
-- Output ONLY the English summary.
+Local conversational forms may include phrases such as:
+"dwi", "dwi ddim", "nes i", "oedd o", "mae o", "yn gwbod",
+"dreifio", "efo", "rwan" and other North Wales forms.
 
-ROUGH TRANSCRIPT:
-${transcript}
+For example, speech similar to:
+"dwi just yn testio yr system newydd, ond dwi ddim yn gwbod os mae o yn gweithio"
+means:
+"I'm just testing the new system, but I don't know if it's working."
+
+This is for Menai Muttineers Flyball Club.
+
+Likely dog names include:
+Chip, Gemma, Bree, Arlo, Izzie, Maggie, Snow, Olaf, Rizzo, Macs,
+Nellie, Echo, Milo, Cheddar, Cali, Bryn, Bear, Coco and Ember.
+
+Your job has TWO parts:
+
+1. TRANSCRIPT
+Create your best-effort transcript of what was ACTUALLY SAID.
+Keep the original Welsh/Wenglish language and preserve English words where
+the speaker used English. Do not convert it into formal Welsh.
+Do not invent words to fill unclear audio.
+
+2. SUMMARY
+Create a short, natural ENGLISH Captain's Log summary of the meaning.
+Usually 1 to 4 sentences.
+Preserve names, numbers, dates, actions, observations and follow-ups.
+Do not invent information or add coaching advice that was not spoken.
+
+Return ONLY valid JSON in exactly this shape:
+
+{
+  "transcript": "best effort original Welsh/Wenglish transcript",
+  "summary": "short English summary"
+}
 `;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: prompt,
+      contents: [
+        {
+          inlineData: {
+            data: audio.toString('base64'),
+            mimeType,
+          },
+        },
+        {
+          text: prompt,
+        },
+      ],
       config: {
-        temperature: 0.2,
-        maxOutputTokens: 300,
-        responseMimeType: 'text/plain',
+        temperature: 0.1,
+        maxOutputTokens: 600,
+        responseMimeType: 'application/json',
       },
     });
 
-    const summary = String(response.text || '').trim();
+    let raw = String(response.text || '').trim();
+
+    if (raw.startsWith('```')) {
+      raw = raw
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/, '');
+    }
+
+    const parsed = JSON.parse(raw);
+
+    const transcript = String(parsed.transcript || '').trim();
+    const summary = String(parsed.summary || '').trim();
 
     if (!summary) {
       throw new Error('Gemini returned an empty summary.');
     }
 
-    return {summary};
+    return {
+      transcript,
+      summary,
+    };
   } catch (error) {
-    console.error('Captain voice summary failed', error);
+    console.error('Captain direct-audio summary failed', error);
+
     throw new HttpsError(
       'internal',
-      'The English summary could not be created.',
+      'The voice note could not be understood. Please try again.',
     );
   }
 });

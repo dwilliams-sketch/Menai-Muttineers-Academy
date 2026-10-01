@@ -770,6 +770,7 @@ const Map<String, String> _cy = {
       'Dywedwch wrth yr hyfforddwyr beth sy’n digwydd. Gallwch hefyd anfon fideo byr atom fel y gallwn weld yn union beth rydych yn ei olygu.',
   'Show us the problem': 'Dangoswch y broblem i ni',
   'RECORD VIDEO': 'RECORDIO FIDEO',
+  'Recording': 'Yn recordio',
   'A short clip is normally plenty. Recordings are limited to 90 seconds.':
       'Mae clip byr fel arfer yn ddigon. Mae recordiadau wedi’u cyfyngu i 90 eiliad.',
   // Core navigation and account flow
@@ -1297,6 +1298,9 @@ const Map<String, String> _cy = {
   'Course Editor': 'Golygydd y Cwrs',
   'Captain’s Log': 'Log y Capten',
   'Show what was heard': 'Dangos beth gafodd ei glywed',
+  'PROCESSING VOICE…': 'YN PROSESU’R LLAIS…',
+  'STOP & PROCESS': 'STOPIO A PHROSESU',
+  'WELSH / WENGLISH VOICE NOTE': 'NODYN LLAIS CYMRAEG / WENGLISH',
   'System Health': 'Iechyd y System',
   'Preview as Learner': 'Rhagolwg fel Dysgwr',
   'LEARNER PREVIEW MODE': 'MODD RHAGOLWG DYSGWR',
