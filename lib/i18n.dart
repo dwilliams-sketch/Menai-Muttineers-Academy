@@ -1296,6 +1296,7 @@ const Map<String, String> _cy = {
   'Manage Crew & Staff': 'Rheoli’r Criw a’r Staff',
   'Course Editor': 'Golygydd y Cwrs',
   'Captain’s Log': 'Log y Capten',
+  'Show what was heard': 'Dangos beth gafodd ei glywed',
   'System Health': 'Iechyd y System',
   'Preview as Learner': 'Rhagolwg fel Dysgwr',
   'LEARNER PREVIEW MODE': 'MODD RHAGOLWG DYSGWR',

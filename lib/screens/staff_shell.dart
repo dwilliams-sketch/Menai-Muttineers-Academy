@@ -6430,14 +6430,208 @@ class CaptainLogPanel extends StatefulWidget {
 
 class _CaptainLogPanelState extends State<CaptainLogPanel> {
   final service = FirestoreService();
+  final functions = AdminFunctionsService();
   final c = TextEditingController();
+  final stt.SpeechToText _captainSpeech = stt.SpeechToText();
 
   bool showDone = false;
+  bool _voiceListening = false;
+  bool _voiceBusy = false;
+  String _voiceTranscript = '';
+  String _voiceMessage = '';
 
   @override
   void dispose() {
+    _captainSpeech.cancel();
     c.dispose();
     super.dispose();
+  }
+
+  Future<void> _startCaptainVoice() async {
+    if (_voiceBusy) return;
+
+    try {
+      final available = await _captainSpeech.initialize(
+        onStatus: (status) {
+          if (!mounted) return;
+
+          if (status == 'notListening' || status == 'done') {
+            setState(() {
+              _voiceListening = false;
+
+              if (_voiceTranscript.trim().isNotEmpty) {
+                _voiceMessage = 'Speech captured — tap CREATE ENGLISH SUMMARY.';
+              }
+            });
+          }
+        },
+        onError: (error) {
+          if (!mounted) return;
+
+          setState(() {
+            _voiceListening = false;
+            _voiceMessage = 'Speech recognition: ${error.errorMsg}';
+          });
+        },
+      );
+
+      if (!available) {
+        if (!mounted) return;
+
+        setState(() {
+          _voiceMessage = 'Speech recognition is not available on this device.';
+        });
+
+        return;
+      }
+
+      final locales = await _captainSpeech.locales();
+      stt.LocaleName? welshLocale;
+
+      for (final locale in locales) {
+        final id = locale.localeId.toLowerCase().replaceAll('_', '-');
+
+        if (id == 'cy-gb' || id.startsWith('cy-')) {
+          welshLocale = locale;
+          break;
+        }
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _voiceTranscript = '';
+        _voiceListening = true;
+        _voiceMessage = welshLocale == null
+            ? 'Listening — Welsh was not listed on this device, so the system language will be used.'
+            : 'Listening in Welsh / Wenglish…';
+      });
+
+      await _captainSpeech.listen(
+        onResult: (result) {
+          if (!mounted) return;
+
+          setState(() {
+            _voiceTranscript = result.recognizedWords.trim();
+
+            if (result.finalResult && _voiceTranscript.isNotEmpty) {
+              _voiceMessage = 'Speech captured — tap CREATE ENGLISH SUMMARY.';
+            }
+          });
+        },
+        listenOptions: stt.SpeechListenOptions(
+          localeId: welshLocale?.localeId,
+          listenFor: const Duration(seconds: 90),
+          pauseFor: const Duration(seconds: 8),
+          listenMode: stt.ListenMode.dictation,
+          partialResults: true,
+          cancelOnError: false,
+          autoPunctuation: true,
+          contextualPhrases: const [
+            'Menai Muttineers',
+            'flyball',
+            'box turn',
+            'rolling start',
+            'false start',
+            'crossing',
+            'ring party',
+            'foundation',
+            'pairs',
+            'singles',
+            'Chip',
+            'Arlo',
+            'Izzie',
+            'Maggie',
+            'Snow',
+            'Olaf',
+            'Rizzo',
+            'Macs',
+            'Nellie',
+            'Milo',
+            'Cheddar',
+            'Coco',
+            'Ember',
+          ],
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _voiceListening = false;
+        _voiceMessage = 'Could not start voice recognition: $error';
+      });
+    }
+  }
+
+  Future<void> _stopCaptainVoice() async {
+    if (_captainSpeech.isListening) {
+      await _captainSpeech.stop();
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _voiceListening = false;
+
+      if (_voiceTranscript.trim().isNotEmpty) {
+        _voiceMessage = 'Speech captured — creating English summary…';
+      }
+    });
+
+    await _summariseCaptainVoice();
+  }
+
+  Future<void> _summariseCaptainVoice() async {
+    final transcript = _voiceTranscript.trim();
+
+    if (transcript.isEmpty || _voiceBusy) return;
+
+    setState(() {
+      _voiceBusy = true;
+      _voiceMessage = 'Creating English Captain’s Log summary…';
+    });
+
+    try {
+      final summary = await functions.summariseCaptainVoiceTranscript(
+        transcript: transcript,
+      );
+
+      if (!mounted) return;
+
+      c.text = summary;
+      c.selection = TextSelection.collapsed(offset: c.text.length);
+
+      setState(() {
+        _voiceMessage =
+            'Summary ready — edit it if needed, then tap + to save it.';
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _voiceMessage =
+            'Could not create the English summary. Your recognised text is still here.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _voiceBusy = false);
+      }
+    }
+  }
+
+  Future<void> _clearCaptainVoice() async {
+    if (_captainSpeech.isListening) {
+      await _captainSpeech.cancel();
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _voiceListening = false;
+      _voiceTranscript = '';
+      _voiceMessage = '';
+    });
   }
 
   @override
@@ -6450,42 +6644,115 @@ class _CaptainLogPanelState extends State<CaptainLogPanel> {
     children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: TextField(
-                controller: c,
-                decoration: const InputDecoration(
-                  label: I18nText('Idea / action / follow-up'),
-                ),
-              ),
-            ),
-            const SizedBox(width: 7),
-            IconButton.filled(
-              onPressed: () async {
-                final text = c.text.trim();
-
-                if (text.isEmpty) return;
-
-                await service.addCaptainLog(
-                  author: widget.profile.name,
-                  text: text,
-                );
-
-                c.clear();
-
-                if (context.mounted) {
-                  FocusScope.of(context).unfocus();
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: I18nText('Captain’s Log item added.'),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: c,
+                    maxLines: null,
+                    decoration: const InputDecoration(
+                      label: I18nText('Idea / action / follow-up'),
                     ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.add),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                IconButton.filled(
+                  tooltip: 'Save to Captain’s Log',
+                  onPressed: () async {
+                    final text = c.text.trim();
+
+                    if (text.isEmpty) return;
+
+                    await service.addCaptainLog(
+                      author: widget.profile.name,
+                      text: text,
+                    );
+
+                    c.clear();
+                    await _clearCaptainVoice();
+
+                    if (context.mounted) {
+                      FocusScope.of(context).unfocus();
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: I18nText('Captain’s Log item added.'),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.add),
+                ),
+              ],
             ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _voiceBusy
+                        ? null
+                        : _voiceListening
+                        ? _stopCaptainVoice
+                        : _voiceTranscript.trim().isNotEmpty
+                        ? _summariseCaptainVoice
+                        : _startCaptainVoice,
+                    icon: _voiceBusy
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            _voiceListening
+                                ? Icons.stop_circle
+                                : _voiceTranscript.trim().isNotEmpty
+                                ? Icons.auto_awesome
+                                : Icons.mic,
+                          ),
+                    label: Text(
+                      _voiceBusy
+                          ? 'CREATING SUMMARY…'
+                          : _voiceListening
+                          ? 'STOP & CREATE SUMMARY'
+                          : _voiceTranscript.trim().isNotEmpty
+                          ? 'CREATE ENGLISH SUMMARY'
+                          : 'WELSH / WENGLISH VOICE NOTE',
+                    ),
+                  ),
+                ),
+                if (_voiceTranscript.trim().isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  IconButton.outlined(
+                    tooltip: 'Clear and record again',
+                    onPressed: _voiceBusy ? null : _clearCaptainVoice,
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
+              ],
+            ),
+            if (_voiceMessage.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(_voiceMessage, style: Theme.of(context).textTheme.bodySmall),
+            ],
+            if (_voiceTranscript.trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(bottom: 8),
+                leading: const Icon(Icons.hearing),
+                title: const I18nText('Show what was heard'),
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: SelectableText(_voiceTranscript),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

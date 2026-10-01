@@ -4,6 +4,7 @@ const {onDocumentCreated} = require('firebase-functions/v2/firestore');
 const {onSchedule} = require('firebase-functions/v2/scheduler');
 const {onCall, HttpsError} = require('firebase-functions/v2/https');
 const {TranslationServiceClient} = require('@google-cloud/translate').v3;
+const {GoogleGenAI} = require('@google/genai');
 
 admin.initializeApp();
 setGlobalOptions({region: 'europe-west2', maxInstances: 10});
@@ -865,6 +866,113 @@ exports.refreshVideoStorageStats = onCall(async (request) => {
   }
 
   return await updateVideoStorageStats();
+});
+
+
+// Captain's Log experimental Welsh / Wenglish voice-note summariser.
+// The device performs speech recognition. Only the resulting text reaches
+// this function; no microphone recording is stored by the Academy.
+exports.summariseCaptainVoiceTranscript = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in first.');
+  }
+
+  const staff = await db.collection('users').doc(request.auth.uid).get();
+  const role = String(staff.data()?.role || '');
+
+  if (!['admin', 'captain'].includes(role)) {
+    throw new HttpsError(
+      'permission-denied',
+      'Admin/Captain access required.',
+    );
+  }
+
+  const transcript = String(request.data?.transcript || '').trim();
+
+  if (!transcript) {
+    throw new HttpsError(
+      'invalid-argument',
+      'No speech was recognised.',
+    );
+  }
+
+  if (transcript.length > 12000) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Voice note is too long.',
+    );
+  }
+
+  const projectId =
+    process.env.GOOGLE_CLOUD_PROJECT ||
+    process.env.GCLOUD_PROJECT ||
+    process.env.GCP_PROJECT ||
+    admin.app().options.projectId;
+
+  const ai = new GoogleGenAI({
+    vertexai: true,
+    project: projectId,
+    location: 'global',
+  });
+
+  const prompt = `
+You are preparing a private Captain's Log note for Menai Muttineers Flyball Club.
+
+The input is ROUGH automatic speech recognition from a person speaking natural
+Anglesey Welsh. Their speech commonly code-switches between Welsh and English.
+English words inside Welsh sentences are NORMAL and must be interpreted by
+meaning, not treated as mistakes.
+
+Examples of perfectly normal mixed vocabulary include:
+doctor, aeroplane, training, box, box turn, jump, jumps, lane, lights,
+pairs, singles, foundation, open, rolling start, false start, crossing,
+ring party, early, late, clean run and flyball.
+
+Likely Menai Muttineers dog names include:
+Chip, Gemma, Bree, Arlo, Izzie, Maggie, Snow, Olaf, Rizzo, Macs, Nellie,
+Echo, Milo, Cheddar, Cali, Bryn, Bear, Coco and Ember.
+
+Instructions:
+- Understand the meaning of the Welsh/Wenglish transcript.
+- Produce a SHORT, natural English Captain's Log summary.
+- Usually use 1 to 4 sentences.
+- Preserve names, numbers, dates, actions, training observations and follow-ups.
+- Do not invent information that was not said.
+- Do not add coaching advice unless the speaker actually suggested it.
+- If part of the transcript is uncertain, preserve only what can reasonably
+  be understood rather than making something up.
+- Do not explain the translation process.
+- Output ONLY the English summary.
+
+ROUGH TRANSCRIPT:
+${transcript}
+`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        temperature: 0.2,
+        maxOutputTokens: 300,
+        responseMimeType: 'text/plain',
+      },
+    });
+
+    const summary = String(response.text || '').trim();
+
+    if (!summary) {
+      throw new Error('Gemini returned an empty summary.');
+    }
+
+    return {summary};
+  } catch (error) {
+    console.error('Captain voice summary failed', error);
+    throw new HttpsError(
+      'internal',
+      'The English summary could not be created.',
+    );
+  }
 });
 
 exports.translateAdminText = onCall(async (request) => {

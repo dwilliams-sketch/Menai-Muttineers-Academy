@@ -196,7 +196,8 @@ service cloud.firestore {
     match /notifications/{id} {
       // Learners may create their own notifications or staff-targeted alerts. They cannot create notifications for other learners.
       allow create: if signedIn() && (
-        request.resource.data.userId == request.auth.uid
+        accountStaff()
+        || request.resource.data.userId == request.auth.uid
         || userDoc(request.resource.data.userId).data.role in ['trainer','admin','captain']
       );
       allow read: if signedIn() && (resource.data.userId == request.auth.uid || staff());
